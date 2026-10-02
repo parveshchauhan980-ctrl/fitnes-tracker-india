@@ -1,0 +1,6 @@
+{
+  "name": "FitTrack 30",
+  "description": "30-Day Health & Fitness Challenge and Progress Tracking platform with custom daily workouts, streak counter, BMI calculator, progress photo uploads, and analytics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

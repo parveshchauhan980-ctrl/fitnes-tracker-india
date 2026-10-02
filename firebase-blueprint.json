@@ -1,0 +1,106 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile with fitness tracking and 30-day challenge progress",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "maxLength": 100 },
+        "email": { "type": "string", "maxLength": 150 },
+        "age": { "type": "number" },
+        "gender": { "type": "string", "enum": ["male", "female", "other", "prefer_not_to_say"] },
+        "height": { "type": "number" },
+        "startingWeight": { "type": "number" },
+        "currentWeight": { "type": "number" },
+        "bmi": { "type": "number" },
+        "fitnessGoal": { "type": "string", "enum": ["Weight Loss", "Muscle Gain", "General Fitness", "Improve Stamina"] },
+        "fitnessLevel": { "type": "string", "enum": ["Beginner", "Intermediate", "Advanced"] },
+        "profilePhoto": { "type": "string", "maxLength": 2000 },
+        "challengeStartDate": { "type": "string", "maxLength": 50 },
+        "currentDay": { "type": "number" },
+        "completedDays": { "type": "number" },
+        "currentStreak": { "type": "number" },
+        "bestStreak": { "type": "number" },
+        "totalWorkoutMinutes": { "type": "number" },
+        "totalSteps": { "type": "number" },
+        "totalWater": { "type": "number" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" },
+        "role": { "type": "string", "enum": ["user", "admin"] }
+      },
+      "required": ["name", "email", "role", "currentDay", "completedDays"]
+    },
+    "DailyProgress": {
+      "title": "DailyProgress",
+      "description": "Daily workout, health metrics and photo submission",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "dayNumber": { "type": "number" },
+        "date": { "type": "string", "maxLength": 50 },
+        "weight": { "type": "number" },
+        "steps": { "type": "number" },
+        "water": { "type": "number" },
+        "workoutDuration": { "type": "number" },
+        "caloriesBurned": { "type": "number" },
+        "sleepHours": { "type": "number" },
+        "mood": { "type": "string", "maxLength": 50 },
+        "notes": { "type": "string", "maxLength": 1000 },
+        "progressPhotoUrl": { "type": "string", "maxLength": 2000 },
+        "completed": { "type": "boolean" },
+        "submittedAt": { "type": "string" }
+      },
+      "required": ["userId", "dayNumber", "completed", "submittedAt"]
+    },
+    "DailyTask": {
+      "title": "DailyTask",
+      "description": "Prescribed exercise plan and health targets for a challenge day",
+      "type": "object",
+      "properties": {
+        "dayNumber": { "type": "number" },
+        "title": { "type": "string", "maxLength": 150 },
+        "description": { "type": "string", "maxLength": 1000 },
+        "duration": { "type": "number" },
+        "difficulty": { "type": "string", "enum": ["Beginner", "Intermediate", "Advanced"] },
+        "waterTarget": { "type": "number" },
+        "stepTarget": { "type": "number" },
+        "caloriesTarget": { "type": "number" },
+        "exercises": { "type": "array" },
+        "instructions": { "type": "string", "maxLength": 2000 },
+        "safetyNote": { "type": "string", "maxLength": 1000 }
+      },
+      "required": ["dayNumber", "title", "duration", "difficulty"]
+    },
+    "Achievement": {
+      "title": "Achievement",
+      "description": "Milestone and badge definition for the 30-day challenge",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 100 },
+        "title": { "type": "string", "maxLength": 100 },
+        "description": { "type": "string", "maxLength": 300 },
+        "icon": { "type": "string", "maxLength": 100 },
+        "requirement": { "type": "string", "maxLength": 200 }
+      },
+      "required": ["id", "title", "description"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profile and cumulative progress"
+    },
+    "/users/{userId}/dailyProgress/{progressId}": {
+      "schema": "DailyProgress",
+      "description": "Day-by-day workout and health log for a user"
+    },
+    "/dailyTasks/{dayId}": {
+      "schema": "DailyTask",
+      "description": "Workout and targets for Days 1 through 30"
+    },
+    "/achievements/{achievementId}": {
+      "schema": "Achievement",
+      "description": "Badges and challenge milestone requirements"
+    }
+  }
+}
