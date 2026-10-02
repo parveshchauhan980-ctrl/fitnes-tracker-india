@@ -9,6 +9,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { NotificationProvider } from './context/NotificationContext';
 import { AppLayout } from './components/layout/AppLayout';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
 
 // Pages
 import { LandingPage } from './pages/LandingPage';
@@ -81,11 +82,12 @@ const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
 export default function App() {
   return (
-    <ThemeProvider>
-      <NotificationProvider>
-        <AuthProvider>
-          <BrowserRouter>
-            <Routes>
+    <ErrorBoundary>
+      <ThemeProvider>
+        <NotificationProvider>
+          <AuthProvider>
+            <BrowserRouter>
+              <Routes>
               {/* Public Routes */}
               <Route path="/" element={<LandingPage />} />
               <Route path="/login" element={<LoginPage />} />
@@ -198,5 +200,6 @@ export default function App() {
         </AuthProvider>
       </NotificationProvider>
     </ThemeProvider>
+  </ErrorBoundary>
   );
 }
