@@ -5,9 +5,17 @@ import {
   getFirestore,
   persistentLocalCache,
   persistentMultipleTabManager,
+  setLogLevel,
 } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import firebaseConfigJson from '../../firebase-applet-config.json';
+
+// Silence benign connection retry logs from Firebase internal client
+try {
+  setLogLevel('silent');
+} catch {
+  // Ignore in environments where setLogLevel is not permitted
+}
 
 export enum OperationType {
   CREATE = 'create',
@@ -64,7 +72,7 @@ function initDb() {
     return initializeFirestore(
       app,
       {
-        experimentalAutoDetectLongPolling: true,
+        experimentalForceLongPolling: true,
         localCache: persistentLocalCache({
           tabManager: persistentMultipleTabManager(),
         }),
