@@ -1,12 +1,12 @@
 {
   "projectId": "fitness-tracker-1be7d",
-  "appId": "1:609943866898:web:cc871c132a7099dbb2d2cb",
+  "appId": "1:609943866898:web:fb1d82940494907eb2d2cb",
   "apiKey": "AIzaSyDd0kNP7ZIG70ntdcWNzVvT1TPAnYKavyI",
   "authDomain": "fitness-tracker-1be7d.firebaseapp.com",
-  "firestoreDatabaseId": "",
+  "firestoreDatabaseId": "ai-studio-96b92539-3148-426f-bbbb-16c1368cf6f3",
   "storageBucket": "fitness-tracker-1be7d.firebasestorage.app",
   "messagingSenderId": "609943866898",
   "measurementId": "",
-  "oAuthClientId": "",
+  "oAuthClientId": "609943866898-it06inovm0hf1kl47lvmuhnerj4qjg8a.apps.googleusercontent.com",
   "recaptchaSiteKey": ""
 }
