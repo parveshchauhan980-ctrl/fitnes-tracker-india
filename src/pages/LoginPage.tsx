@@ -5,7 +5,7 @@ import { useNotification } from '../context/NotificationContext';
 import { Dumbbell, Mail, Lock, ArrowRight, ShieldCheck, AlertCircle, X, Check, Copy, ExternalLink, Sparkles } from 'lucide-react';
 
 export const LoginPage: React.FC = () => {
-  const { loginWithEmail, loginWithGoogle, loginWithGoogleEmail, resetPassword } = useAuth();
+  const { loginWithEmail, loginWithGoogle, loginWithGoogleEmail, loginDemoUser, resetPassword } = useAuth();
   const { showToast } = useNotification();
   const navigate = useNavigate();
 
@@ -37,12 +37,23 @@ export const LoginPage: React.FC = () => {
       showToast('success', 'Welcome Back!', 'Ready to crush today’s workout?');
       navigate('/dashboard');
     } catch (err: any) {
-      console.error('Login error:', err);
+      const code = err?.code || '';
+      if (
+        code === 'auth/invalid-credential' ||
+        code === 'auth/user-not-found' ||
+        code === 'auth/wrong-password' ||
+        code === 'auth/invalid-email'
+      ) {
+        console.warn('Login validation notice:', code);
+      } else {
+        console.error('Login error:', err);
+      }
+
       let message = 'Failed to sign in. Please verify your email and password.';
       if (err.code === 'auth/operation-not-allowed') {
         message = 'Email/Password login is not enabled in Firebase Authentication.';
       } else if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
-        message = 'Invalid email or password. Please check your credentials or register a new account.';
+        message = 'Invalid email or password. If you don’t have an account yet, please click "Start Day 1 Free" to register, or use Google Authentication.';
       } else if (err.code === 'auth/too-many-requests') {
         message = 'Too many attempts. Please try again later or reset your password.';
       }
@@ -61,16 +72,21 @@ export const LoginPage: React.FC = () => {
       showToast('success', 'Signed In', 'Welcome to FitTrack 30!');
       navigate('/dashboard');
     } catch (err: any) {
-      console.error('Google sign in error:', err);
       const code = err?.code || '';
       
-      // If popup was blocked or Firebase domain is not authorized in this environment
+      // If user closed the popup or popup was blocked by browser
+      if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
+        console.warn('Google sign-in popup was closed by user or dismissed.');
+        showToast('info', 'Sign-in Cancelled', 'Google popup was closed. You can also sign in directly below.');
+        setGoogleModalOpen(true);
+        return;
+      }
+
+      console.warn('Google sign in interrupted, opening assistant:', code || err?.message);
       if (
         code === 'auth/unauthorized-domain' ||
         code === 'auth/popup-blocked' ||
         code === 'auth/operation-not-allowed' ||
-        code === 'auth/cancelled-popup-request' ||
-        code === 'auth/popup-closed-by-user' ||
         err.message?.includes('popup') ||
         err.message?.includes('domain')
       ) {
@@ -79,6 +95,19 @@ export const LoginPage: React.FC = () => {
         setErrorMsg(err.message || 'Google sign in was cancelled or interrupted.');
         setGoogleModalOpen(true);
       }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGuestDemo = async () => {
+    setLoading(true);
+    try {
+      await loginDemoUser();
+      showToast('success', 'Guest Mode', 'Welcome to the 30-Day Fitness Challenge!');
+      navigate('/dashboard');
+    } catch (err: any) {
+      showToast('error', 'Error', 'Could not start guest session.');
     } finally {
       setLoading(false);
     }
@@ -147,9 +176,27 @@ export const LoginPage: React.FC = () => {
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md px-4 sm:px-0">
         <div className="bg-white dark:bg-slate-900 py-8 px-6 sm:px-10 shadow-xl border border-slate-200 dark:border-slate-800 rounded-3xl">
           {errorMsg && (
-            <div className="mb-6 p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-600 dark:text-rose-300 text-xs flex items-start gap-3">
-              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-              <span>{errorMsg}</span>
+            <div className="mb-6 p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-600 dark:text-rose-300 text-xs flex flex-col gap-2">
+              <div className="flex items-start gap-2.5">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                <span className="flex-1 leading-relaxed">{errorMsg}</span>
+              </div>
+              <div className="flex items-center gap-3 pt-2 border-t border-rose-200/60 dark:border-rose-900/60 text-[11px]">
+                <Link
+                  to="/register"
+                  className="font-bold underline text-rose-700 dark:text-rose-200 hover:text-rose-900"
+                >
+                  Create New Profile
+                </Link>
+                <span>•</span>
+                <button
+                  type="button"
+                  onClick={() => setGoogleModalOpen(true)}
+                  className="font-bold underline text-rose-700 dark:text-rose-200 hover:text-rose-900"
+                >
+                  Sign In With Google
+                </button>
+              </div>
             </div>
           )}
 
@@ -220,12 +267,12 @@ export const LoginPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="mt-4 grid grid-cols-1 gap-3">
+            <div className="mt-4 grid grid-cols-1 gap-2.5">
               <button
                 type="button"
                 onClick={handleGoogleSignIn}
                 disabled={loading}
-                className="w-full flex items-center justify-center gap-3 py-2.5 px-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                className="w-full flex items-center justify-center gap-3 py-2.5 px-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm"
               >
                 <svg className="w-4 h-4" viewBox="0 0 24 24">
                   <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -234,6 +281,16 @@ export const LoginPage: React.FC = () => {
                   <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
                 </svg>
                 Google Authentication
+              </button>
+
+              <button
+                type="button"
+                onClick={handleGuestDemo}
+                disabled={loading}
+                className="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-xl border border-dashed border-emerald-500/40 hover:border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 text-xs font-semibold transition-colors"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-emerald-500" />
+                Explore as Guest Athlete (Instant Demo)
               </button>
             </div>
           </div>

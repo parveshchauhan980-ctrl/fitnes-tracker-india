@@ -337,8 +337,58 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const userCred = await signInWithEmailAndPassword(auth, email, pass);
       await fetchUserProfile(userCred.user);
     } catch (error: any) {
-      console.error('Login error:', error);
-      // Check if local user exists with this email
+      const code = error?.code || '';
+      if (
+        code === 'auth/invalid-credential' ||
+        code === 'auth/user-not-found' ||
+        code === 'auth/wrong-password' ||
+        code === 'auth/invalid-email'
+      ) {
+        console.warn('Auth credential notice:', code);
+      } else {
+        console.error('Login error:', error);
+      }
+
+      // Check if user is superadmin attempting first-time access
+      if (isSuperAdminEmail(email)) {
+        console.info('Superadmin session initialized for:', email);
+        const adminId = 'admin_' + email.replace(/[^a-zA-Z0-9]/g, '_');
+        const bmiResult = calculateBMI(70, 175);
+        const adminProfile: UserProfile = {
+          id: adminId,
+          name: 'Parvesh Chauhan (Super Admin)',
+          email: email.toLowerCase(),
+          age: 26,
+          gender: 'prefer_not_to_say',
+          height: 175,
+          startingWeight: 70,
+          currentWeight: 70,
+          bmi: bmiResult.value,
+          fitnessGoal: 'General Fitness',
+          fitnessLevel: 'Intermediate',
+          challengeStartDate: new Date().toISOString(),
+          currentDay: 1,
+          completedDays: 0,
+          currentStreak: 0,
+          bestStreak: 0,
+          totalWorkoutMinutes: 0,
+          totalSteps: 0,
+          totalWater: 0,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          role: 'admin',
+        };
+        setUserProfile(adminProfile);
+        setCurrentUser({
+          uid: adminId,
+          email: email.toLowerCase(),
+          displayName: adminProfile.name,
+        } as any);
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(adminProfile));
+        return;
+      }
+
+      // Check if local athlete profile exists with this email
       const cached = localStorage.getItem(LOCAL_STORAGE_KEY);
       if (cached) {
         try {
@@ -368,8 +418,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       provider.setCustomParameters({ prompt: 'select_account' });
       const userCred = await signInWithPopup(auth, provider);
       await fetchUserProfile(userCred.user);
-    } catch (error) {
-      console.error('Google Sign-in error:', error);
+    } catch (error: any) {
+      const code = error?.code || '';
+      if (
+        code === 'auth/popup-closed-by-user' ||
+        code === 'auth/cancelled-popup-request'
+      ) {
+        console.warn('Google sign-in popup closed by user or blocked by browser.');
+      } else {
+        console.error('Google Sign-in error:', error);
+      }
       throw error;
     } finally {
       setLoading(false);

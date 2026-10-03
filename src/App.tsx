@@ -80,13 +80,21 @@ const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return <AppLayout>{children}</AppLayout>;
 };
 
+const getRouterBasename = (): string | undefined => {
+  const base = import.meta.env.BASE_URL;
+  if (!base || base === '/' || base === './' || base === '.') {
+    return undefined;
+  }
+  return base.replace(/\/+$/, '') || undefined;
+};
+
 export default function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider>
         <NotificationProvider>
           <AuthProvider>
-            <BrowserRouter basename={import.meta.env.BASE_URL}>
+            <BrowserRouter basename={getRouterBasename()}>
               <Routes>
               {/* Public Routes */}
               <Route path="/" element={<LandingPage />} />
