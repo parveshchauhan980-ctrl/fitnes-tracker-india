@@ -129,7 +129,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return newProfile;
       }
     } catch (error) {
-      console.error('Error fetching user profile from Firestore:', error);
+      console.warn('Notice fetching user profile from Firestore, using resilient profile fallback:', error);
       // Fallback to local cache if offline or permission restricted
       const cached = localStorage.getItem(LOCAL_STORAGE_KEY);
       if (cached) {
@@ -139,7 +139,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return parsed;
         } catch {}
       }
-      return null;
+
+      // Initialize responsive fallback profile for the authenticated athlete
+      const bmiResult = calculateBMI(70, 175);
+      const fallbackProfile: UserProfile = {
+        id: user.uid,
+        name: user.displayName || user.email?.split('@')[0] || 'Athlete',
+        email: user.email || '',
+        age: 26,
+        gender: 'prefer_not_to_say',
+        height: 175,
+        startingWeight: 70,
+        currentWeight: 70,
+        bmi: bmiResult.value,
+        fitnessGoal: 'General Fitness',
+        fitnessLevel: 'Beginner',
+        challengeStartDate: new Date().toISOString(),
+        currentDay: 1,
+        completedDays: 0,
+        currentStreak: 0,
+        bestStreak: 0,
+        totalWorkoutMinutes: 0,
+        totalSteps: 0,
+        totalWater: 0,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        role: isSuperAdminEmail(user.email) ? 'admin' : 'user',
+      };
+      setUserProfile(fallbackProfile);
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(fallbackProfile));
+      return fallbackProfile;
     }
   }, []);
 

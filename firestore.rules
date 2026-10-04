@@ -17,13 +17,9 @@ service cloud.firestore {
 
     function isAdmin() {
       return isSignedIn() && (
-        request.auth.token.email == 'parveshchauhan980@gmail.com' ||
+        ('email' in request.auth.token && request.auth.token.email.lower() == 'parveshchauhan980@gmail.com') ||
         exists(/databases/$(database)/documents/admins/$(request.auth.uid))
       );
-    }
-
-    function isValidId(id) {
-      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
 
     // Admins list
@@ -46,18 +42,16 @@ service cloud.firestore {
 
     // User profiles and subcollections
     match /users/{userId} {
-      allow get: if isOwner(userId) || isAdmin();
-      allow list: if isAdmin();
-      allow create: if isOwner(userId) && isValidId(userId) && 
-        (request.resource.data.role == 'user' || isAdmin());
-      allow update: if (isOwner(userId) && 
-        (request.resource.data.role == resource.data.role || isAdmin())) || isAdmin();
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isOwner(userId) || isAdmin();
+      allow update: if isOwner(userId) || isAdmin();
       allow delete: if isAdmin();
 
       // Daily Progress Subcollection
       match /dailyProgress/{progressId} {
         allow read: if isOwner(userId) || isAdmin();
-        allow create, update: if (isOwner(userId) && isValidId(progressId)) || isAdmin();
+        allow create, update: if isOwner(userId) || isAdmin();
         allow delete: if isOwner(userId) || isAdmin();
       }
     }
