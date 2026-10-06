@@ -5,7 +5,7 @@ import { useNotification } from '../context/NotificationContext';
 import { Dumbbell, Mail, Lock, ArrowRight, ShieldCheck, AlertCircle, X, Check, Copy, ExternalLink, Sparkles } from 'lucide-react';
 
 export const LoginPage: React.FC = () => {
-  const { loginWithEmail, loginWithGoogle, loginWithGoogleEmail, loginDemoUser, resetPassword } = useAuth();
+  const { loginWithEmail, loginWithGoogle, loginWithGoogleEmail, resetPassword } = useAuth();
   const { showToast } = useNotification();
   const navigate = useNavigate();
 
@@ -95,19 +95,6 @@ export const LoginPage: React.FC = () => {
         setErrorMsg(err.message || 'Google sign in was cancelled or interrupted.');
         setGoogleModalOpen(true);
       }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleGuestDemo = async () => {
-    setLoading(true);
-    try {
-      await loginDemoUser();
-      showToast('success', 'Guest Mode', 'Welcome to the 30-Day Fitness Challenge!');
-      navigate('/dashboard');
-    } catch (err: any) {
-      showToast('error', 'Error', 'Could not start guest session.');
     } finally {
       setLoading(false);
     }
@@ -281,16 +268,6 @@ export const LoginPage: React.FC = () => {
                   <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
                 </svg>
                 Google Authentication
-              </button>
-
-              <button
-                type="button"
-                onClick={handleGuestDemo}
-                disabled={loading}
-                className="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-xl border border-dashed border-emerald-500/40 hover:border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 text-xs font-semibold transition-colors"
-              >
-                <Sparkles className="w-3.5 h-3.5 text-emerald-500" />
-                Explore as Guest Athlete (Instant Demo)
               </button>
             </div>
           </div>

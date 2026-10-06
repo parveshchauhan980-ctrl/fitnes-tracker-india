@@ -635,9 +635,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUserProfile(newProfile);
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(newProfile));
 
-    if (!currentUser.uid.startsWith('local_') && !currentUser.uid.startsWith('demo_') && !currentUser.uid.startsWith('admin_')) {
+    if (!currentUser.uid.startsWith('demo_')) {
       try {
-        await updateDoc(doc(db, 'users', currentUser.uid), payload);
+        await setDoc(doc(db, 'users', currentUser.uid), payload, { merge: true });
       } catch (err) {
         console.warn('Firestore update note:', err);
       }

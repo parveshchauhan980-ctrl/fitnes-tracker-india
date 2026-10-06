@@ -86,6 +86,8 @@ function initDb() {
 
 export const db = initDb();
 export const storage = getStorage(app);
+storage.maxUploadRetryTime = 60000;
+storage.maxOperationRetryTime = 60000;
 
 // Centralized Firestore Error Handler
 export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null): never {

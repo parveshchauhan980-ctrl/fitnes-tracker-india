@@ -199,6 +199,54 @@ export function exportSubmissionsToCSV(submissions: DailyProgress[], user: UserP
 }
 
 /**
+ * Compresses and crops an image file to a lightweight, high-quality square avatar Data URL.
+ */
+export async function compressImageToDataUrl(
+  file: File,
+  maxDimension = 360,
+  quality = 0.85
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+
+          // Crop to square from center for avatars
+          const minSide = Math.min(width, height);
+          const startX = (width - minSide) / 2;
+          const startY = (height - minSide) / 2;
+
+          const targetSize = Math.min(minSide, maxDimension);
+          canvas.width = targetSize;
+          canvas.height = targetSize;
+
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+            ctx.drawImage(img, startX, startY, minSide, minSide, 0, 0, targetSize, targetSize);
+            resolve(canvas.toDataURL('image/jpeg', quality));
+          } else {
+            resolve(e.target?.result as string);
+          }
+        } catch {
+          resolve(e.target?.result as string);
+        }
+      };
+      img.onerror = () => reject(new Error('Failed to process image file.'));
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = () => reject(new Error('Failed to read image file.'));
+    reader.readAsDataURL(file);
+  });
+}
+
+/**
  * Uploads a progress photo either to Firebase Storage or returns optimized data URI if storage is restricted.
  */
 export async function uploadProgressPhoto(
@@ -206,55 +254,25 @@ export async function uploadProgressPhoto(
   dayNumber: number,
   file: File
 ): Promise<string> {
+  // First, produce a fast, optimized high-res avatar locally
+  const optimizedDataUrl = await compressImageToDataUrl(file, 360, 0.85);
+
   const timestamp = Date.now();
   const fileExt = file.name.split('.').pop() || 'jpg';
   const storagePath = `users/${userId}/progressPhotos/day_${dayNumber}_${timestamp}.${fileExt}`;
 
+  // Attempt Firebase Storage with an increased 30-second timeout to give ample time on mobile and slower connections
   try {
     const storageReference = ref(storage, storagePath);
-    const snapshot = await uploadBytes(storageReference, file);
-    const downloadUrl = await getDownloadURL(snapshot.ref);
+    const uploadPromise = uploadBytes(storageReference, file).then(snap => getDownloadURL(snap.ref));
+    const timeoutPromise = new Promise<string>((_, reject) =>
+      setTimeout(() => reject(new Error('Firebase Storage timeout after 30 seconds')), 30000)
+    );
+    const downloadUrl = await Promise.race([uploadPromise, timeoutPromise]);
     return downloadUrl;
   } catch (error) {
-    console.warn('Firebase Storage upload failed or bucket restricted, falling back to local image data encoding:', error);
-    // Fallback: Read as compressed Base64 Data URL to guarantee full functionality and persistent display
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const img = new Image();
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          const maxDimension = 900;
-          let width = img.width;
-          let height = img.height;
-
-          if (width > height) {
-            if (width > maxDimension) {
-              height = Math.round((height * maxDimension) / width);
-              width = maxDimension;
-            }
-          } else {
-            if (height > maxDimension) {
-              width = Math.round((width * maxDimension) / height);
-              height = maxDimension;
-            }
-          }
-
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          if (ctx) {
-            ctx.drawImage(img, 0, 0, width, height);
-            resolve(canvas.toDataURL('image/jpeg', 0.82));
-          } else {
-            resolve(e.target?.result as string);
-          }
-        };
-        img.onerror = () => resolve(e.target?.result as string);
-        img.src = e.target?.result as string;
-      };
-      reader.onerror = () => reject(new Error('Failed to read photo file.'));
-      reader.readAsDataURL(file);
-    });
+    // Graceful fallback to high-quality compressed Data URI if storage bucket times out or is restricted
+    console.warn('Firebase Storage upload notice, using optimized athlete image:', error);
+    return optimizedDataUrl;
   }
 }
