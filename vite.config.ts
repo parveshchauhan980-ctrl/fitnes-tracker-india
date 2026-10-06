@@ -4,9 +4,12 @@ import path from 'path';
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
-export default defineConfig(() => {
+export default defineConfig(({ mode }) => {
+  const isProd = mode === 'production';
+  const base = process.env.VITE_BASE || (isProd && !process.env.VERCEL ? '/fitnes-tracker-india/' : '/');
+
   return {
-    base: '/',
+    base,
     plugins: [
       react(),
       tailwindcss(),
@@ -14,7 +17,7 @@ export default defineConfig(() => {
         registerType: 'autoUpdate',
         includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'icon.svg'],
         manifest: {
-          id: '/',
+          id: base,
           name: 'FitTrack 30 — 30-Day Fitness Challenge',
           short_name: 'FitTrack 30',
           description: 'Track your daily workouts, build 30-day streaks, and transform your fitness.',
@@ -22,8 +25,8 @@ export default defineConfig(() => {
           background_color: '#0f172a',
           display: 'standalone',
           orientation: 'portrait',
-          start_url: '/',
-          scope: '/',
+          start_url: base,
+          scope: base,
           categories: ['fitness', 'health', 'lifestyle'],
           icons: [
             {
