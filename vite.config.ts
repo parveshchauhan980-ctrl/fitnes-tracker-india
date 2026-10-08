@@ -4,9 +4,8 @@ import path from 'path';
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
-export default defineConfig(({ mode }) => {
-  const isProd = mode === 'production';
-  const base = process.env.VITE_BASE || (isProd && !process.env.VERCEL ? '/fitnes-tracker-india/' : '/');
+export default defineConfig(() => {
+  const base = process.env.VITE_BASE || '/';
 
   return {
     base,
