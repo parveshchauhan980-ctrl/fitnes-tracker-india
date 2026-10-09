@@ -2,10 +2,10 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
-import { Dumbbell, Mail, Lock, ArrowRight, ShieldCheck, AlertCircle, X, Check, Copy, ExternalLink, Sparkles } from 'lucide-react';
+import { Dumbbell, Mail, Lock, ArrowRight, AlertCircle } from 'lucide-react';
 
 export const LoginPage: React.FC = () => {
-  const { loginWithEmail, loginWithGoogle, loginWithGoogleEmail, resetPassword } = useAuth();
+  const { loginWithEmail, loginWithGoogle, resetPassword } = useAuth();
   const { showToast } = useNotification();
   const navigate = useNavigate();
 
@@ -15,13 +15,6 @@ export const LoginPage: React.FC = () => {
   const [forgotModalOpen, setForgotModalOpen] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
-
-  // Google Sign-in Assistant Modal
-  const [googleModalOpen, setGoogleModalOpen] = useState(false);
-  const [googleModalEmail, setGoogleModalEmail] = useState('parveshchauhan980@gmail.com');
-  const [copiedDomain, setCopiedDomain] = useState(false);
-
-  const currentDomain = typeof window !== 'undefined' ? window.location.hostname : '';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,8 +45,12 @@ export const LoginPage: React.FC = () => {
       let message = 'Failed to sign in. Please verify your email and password.';
       if (err.code === 'auth/operation-not-allowed') {
         message = 'Email/Password login is not enabled in Firebase Authentication.';
-      } else if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
-        message = 'Invalid email or password. If you don’t have an account yet, please click "Start Day 1 Free" to register, or use Google Authentication.';
+      } else if (
+        err.code === 'auth/user-not-found' ||
+        err.code === 'auth/wrong-password' ||
+        err.code === 'auth/invalid-credential'
+      ) {
+        message = 'Invalid email or password. If you don’t have an account yet, please click "Start Day 1 Free" to register.';
       } else if (err.code === 'auth/too-many-requests') {
         message = 'Too many attempts. Please try again later or reset your password.';
       }
@@ -73,54 +70,27 @@ export const LoginPage: React.FC = () => {
       navigate('/dashboard');
     } catch (err: any) {
       const code = err?.code || '';
-      
-      // If user closed the popup or popup was blocked by browser
+      console.warn('Google sign in error:', code, err?.message);
+
       if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
-        console.warn('Google sign-in popup was closed by user or dismissed.');
-        showToast('info', 'Sign-in Cancelled', 'Google popup was closed. You can also sign in directly below.');
-        setGoogleModalOpen(true);
-        return;
-      }
-
-      console.warn('Google sign in interrupted, opening assistant:', code || err?.message);
-      if (
-        code === 'auth/unauthorized-domain' ||
-        code === 'auth/popup-blocked' ||
-        code === 'auth/operation-not-allowed' ||
-        err.message?.includes('popup') ||
-        err.message?.includes('domain')
-      ) {
-        setGoogleModalOpen(true);
+        setErrorMsg('Google sign-in popup was dismissed. Please try again.');
+        showToast('info', 'Sign-in Cancelled', 'Google sign-in was closed.');
+      } else if (code === 'auth/unauthorized-domain') {
+        const domain = typeof window !== 'undefined' ? window.location.hostname : '';
+        setErrorMsg(
+          `Domain "${domain}" is not authorized in Firebase Console > Authentication > Settings > Authorized domains. Please sign in with email and password.`
+        );
+        showToast('warning', 'Domain Not Authorized', 'Please sign in with Email & Password.');
+      } else if (code === 'auth/popup-blocked') {
+        setErrorMsg('Google sign-in popup was blocked by your browser. Please allow popups or use Email & Password.');
+        showToast('warning', 'Popup Blocked', 'Please allow popups to sign in with Google.');
       } else {
-        setErrorMsg(err.message || 'Google sign in was cancelled or interrupted.');
-        setGoogleModalOpen(true);
+        setErrorMsg(err.message || 'Google sign-in could not be completed. Please use Email & Password.');
+        showToast('error', 'Sign-in Failed', err.message || 'Google authentication failed.');
       }
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleConfirmGoogleEmail = async (selectedEmail: string) => {
-    if (!selectedEmail) return;
-    setLoading(true);
-    setErrorMsg('');
-    try {
-      await loginWithGoogleEmail(selectedEmail);
-      showToast('success', 'Welcome!', `Signed in with ${selectedEmail}`);
-      setGoogleModalOpen(false);
-      navigate('/dashboard');
-    } catch (err: any) {
-      showToast('error', 'Sign-in Error', err.message || 'Could not complete sign in.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleCopyDomain = () => {
-    navigator.clipboard.writeText(currentDomain);
-    setCopiedDomain(true);
-    setTimeout(() => setCopiedDomain(false), 3000);
-    showToast('info', 'Domain Copied', 'Paste this into Firebase Console > Authentication > Settings > Authorized domains');
   };
 
   const handlePasswordReset = async (e: React.FormEvent) => {
@@ -175,14 +145,6 @@ export const LoginPage: React.FC = () => {
                 >
                   Create New Profile
                 </Link>
-                <span>•</span>
-                <button
-                  type="button"
-                  onClick={() => setGoogleModalOpen(true)}
-                  className="font-bold underline text-rose-700 dark:text-rose-200 hover:text-rose-900"
-                >
-                  Sign In With Google
-                </button>
               </div>
             </div>
           )}
@@ -307,108 +269,6 @@ export const LoginPage: React.FC = () => {
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
-
-      {/* Google Sign-in Assistant Modal */}
-      {googleModalOpen && (
-        <div className="fixed inset-0 bg-slate-950/75 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl relative">
-            <button
-              onClick={() => setGoogleModalOpen(false)}
-              className="absolute top-4 right-4 p-1.5 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-white"
-            >
-              <X className="w-4 h-4" />
-            </button>
-
-            <div className="w-12 h-12 rounded-2xl bg-blue-500/10 text-blue-500 flex items-center justify-center mb-4">
-              <svg className="w-6 h-6" viewBox="0 0 24 24">
-                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
-              </svg>
-            </div>
-
-            <h3 className="text-lg font-black text-slate-900 dark:text-white font-['Outfit'] mb-1">
-              Google Account Sign-In
-            </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mb-4 leading-relaxed">
-              Browser popup was interrupted or domain is being verified. You can sign in directly with your Google account below:
-            </p>
-
-            {/* Quick 1-tap Superadmin button */}
-            <div className="mb-4">
-              <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block mb-2">
-                Fast Sign-In As Admin
-              </span>
-              <button
-                type="button"
-                onClick={() => handleConfirmGoogleEmail('parveshchauhan980@gmail.com')}
-                disabled={loading}
-                className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-slate-900/10 border border-emerald-500/30 hover:border-emerald-500 text-slate-900 dark:text-white transition-all group"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-emerald-500 text-white flex items-center justify-center font-bold text-xs">
-                    PC
-                  </div>
-                  <div className="text-left">
-                    <div className="text-xs font-black flex items-center gap-1.5">
-                      parveshchauhan980@gmail.com
-                      <span className="px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-600 dark:text-purple-400 text-[9px] font-bold">
-                        Superadmin
-                      </span>
-                    </div>
-                    <div className="text-[11px] text-slate-400">Owner & Full Admin Portal Access</div>
-                  </div>
-                </div>
-                <ArrowRight className="w-4 h-4 text-emerald-500 group-hover:translate-x-1 transition-transform" />
-              </button>
-            </div>
-
-            {/* Or custom Google Email */}
-            <div className="pt-3 border-t border-slate-100 dark:border-slate-800 mb-4">
-              <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block mb-2">
-                Or Continue With Another Google Account
-              </span>
-              <div className="flex gap-2">
-                <input
-                  type="email"
-                  value={googleModalEmail}
-                  onChange={(e) => setGoogleModalEmail(e.target.value)}
-                  placeholder="your-google-email@gmail.com"
-                  className="flex-1 px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500"
-                />
-                <button
-                  type="button"
-                  onClick={() => handleConfirmGoogleEmail(googleModalEmail)}
-                  disabled={loading || !googleModalEmail}
-                  className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold text-xs shadow-md shadow-emerald-500/20 transition-all shrink-0"
-                >
-                  Continue
-                </button>
-              </div>
-            </div>
-
-            {/* Firebase Domain Whitelist Guide */}
-            {currentDomain && (
-              <div className="p-3 rounded-xl bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 text-[11px] text-slate-500 dark:text-slate-400 space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-slate-700 dark:text-slate-300">Firebase Authorized Domain Tip:</span>
-                  <button
-                    onClick={handleCopyDomain}
-                    className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 hover:underline"
-                  >
-                    {copiedDomain ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
-                    {copiedDomain ? 'Copied' : 'Copy Domain'}
-                  </button>
-                </div>
-                <p className="leading-snug">
-                  To enable native popup in your Firebase console, add <code className="px-1 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200">{currentDomain}</code> under <strong>Authentication &gt; Settings &gt; Authorized domains</strong>.
-                </p>
-              </div>
-            )}
           </div>
         </div>
       )}

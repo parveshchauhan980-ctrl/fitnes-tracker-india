@@ -47,7 +47,6 @@ interface AuthContextType {
   signUpWithLocalProfile: (data: RegisterData) => Promise<void>;
   loginWithEmail: (email: string, pass: string) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
-  loginWithGoogleEmail: (email: string, displayName?: string) => Promise<void>;
   loginDemoUser: (role?: 'user' | 'admin') => Promise<void>;
   logoutUser: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
@@ -130,13 +129,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     } catch (error) {
       console.warn('Notice fetching user profile from Firestore, using resilient profile fallback:', error);
-      // Fallback to local cache if offline or permission restricted
+      // Fallback to local cache ONLY if it strictly belongs to this authenticated athlete
       const cached = localStorage.getItem(LOCAL_STORAGE_KEY);
       if (cached) {
         try {
           const parsed = JSON.parse(cached);
-          setUserProfile(parsed);
-          return parsed;
+          if (
+            parsed.email &&
+            user.email &&
+            parsed.email.trim().toLowerCase() === user.email.trim().toLowerCase()
+          ) {
+            const verifiedRole: UserRole = isSuperAdminEmail(user.email) ? 'admin' : 'user';
+            const verifiedProfile = { ...parsed, role: verifiedRole };
+            setUserProfile(verifiedProfile);
+            return verifiedProfile;
+          }
         } catch {}
       }
 
@@ -463,73 +470,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Google Email direct verification (resilient fallback when popup is blocked or Firebase domain is pending)
-  const loginWithGoogleEmail = async (email: string, displayName?: string) => {
-    setLoading(true);
-    try {
-      const cleanEmail = email.trim().toLowerCase();
-      const isAdminAccount = isSuperAdminEmail(cleanEmail);
-      const fallbackId = 'google_' + cleanEmail.replace(/[^a-zA-Z0-9]/g, '_');
-
-      // Check if user already exists in Firestore
-      let existingProfile: UserProfile | null = null;
-      try {
-        const snap = await getDoc(doc(db, 'users', fallbackId));
-        if (snap.exists()) {
-          existingProfile = snap.data() as UserProfile;
-        }
-      } catch (err) {
-        console.warn('Firestore fetch note:', err);
-      }
-
-      const bmiResult = calculateBMI(70, 175);
-      const finalProfile: UserProfile = existingProfile || {
-        id: fallbackId,
-        name: displayName || cleanEmail.split('@')[0],
-        email: cleanEmail,
-        age: 26,
-        gender: 'prefer_not_to_say',
-        height: 175,
-        startingWeight: 70,
-        currentWeight: 70,
-        bmi: bmiResult.value,
-        fitnessGoal: 'General Fitness',
-        fitnessLevel: 'Beginner',
-        challengeStartDate: new Date().toISOString(),
-        currentDay: 1,
-        completedDays: 0,
-        currentStreak: 0,
-        bestStreak: 0,
-        totalWorkoutMinutes: 0,
-        totalSteps: 0,
-        totalWater: 0,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        role: isAdminAccount ? 'admin' : 'user',
-      };
-
-      try {
-        await setDoc(doc(db, 'users', fallbackId), finalProfile, { merge: true });
-      } catch (err) {
-        console.warn('Firestore write note:', err);
-      }
-
-      setUserProfile(finalProfile);
-      setCurrentUser({
-        uid: fallbackId,
-        email: cleanEmail,
-        displayName: finalProfile.name,
-      } as any);
-
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(finalProfile));
-    } catch (err: any) {
-      console.error('Google email login error:', err);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // Guest athlete preview
   const loginDemoUser = async () => {
     setLoading(true);
@@ -714,8 +654,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const isAdmin = Boolean(
-    isSuperAdminEmail(currentUser?.email) ||
-    isSuperAdminEmail(userProfile?.email)
+    currentUser?.email &&
+    isSuperAdminEmail(currentUser.email) &&
+    userProfile?.role === 'admin'
   );
 
   return (
@@ -731,7 +672,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         signUpWithLocalProfile,
         loginWithEmail,
         loginWithGoogle,
-        loginWithGoogleEmail,
         loginDemoUser,
         logoutUser,
         resetPassword,

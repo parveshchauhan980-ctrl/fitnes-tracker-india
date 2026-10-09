@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
-import { calculateBMI, uploadProgressPhoto } from '../services/fitnessService';
+import { calculateBMI, uploadProgressPhoto, compressImageToDataUrl } from '../services/fitnessService';
 import { BMICard } from '../components/common/BMICard';
 import { FitnessGoal, FitnessLevel, Gender } from '../types';
 import {
@@ -34,10 +34,10 @@ export const ProfilePage: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const [name, setName] = useState(userProfile?.name || '');
-  const [age, setAge] = useState<number>(userProfile?.age || 26);
+  const [age, setAge] = useState<number | string>(userProfile?.age ?? 26);
   const [gender, setGender] = useState<Gender>(userProfile?.gender || 'prefer_not_to_say');
-  const [height, setHeight] = useState<number>(userProfile?.height || 175);
-  const [currentWeight, setCurrentWeight] = useState<number>(userProfile?.currentWeight || 70);
+  const [height, setHeight] = useState<number | string>(userProfile?.height ?? 175);
+  const [currentWeight, setCurrentWeight] = useState<number | string>(userProfile?.currentWeight ?? 70);
   const [fitnessGoal, setFitnessGoal] = useState<FitnessGoal>(userProfile?.fitnessGoal || 'General Fitness');
   const [fitnessLevel, setFitnessLevel] = useState<FitnessLevel>(userProfile?.fitnessLevel || 'Beginner');
 
@@ -54,9 +54,26 @@ export const ProfilePage: React.FC = () => {
 
     setPhotoUploading(true);
     try {
-      const photoUrl = await uploadProgressPhoto(userProfile.id, 0, file);
-      await updateUserProfile({ profilePhoto: photoUrl });
-      showToast('success', 'Profile Photo Updated', 'Your new photo is now active.');
+      // 1. Immediately create a crisp, high-res local avatar Data URL
+      const localDataUrl = await compressImageToDataUrl(file, 360, 0.85);
+      if (!localDataUrl) {
+        throw new Error('Unable to read the image file. Please try a different photo.');
+      }
+
+      // 2. Immediately update the profile so user sees change with zero latency
+      await updateUserProfile({ profilePhoto: localDataUrl });
+      showToast('success', 'Profile Photo Updated', 'Your new photo is now active!');
+
+      // 3. In background, attempt to upload to Firebase Storage if available
+      uploadProgressPhoto(userProfile.id, 0, file)
+        .then(async (cloudUrl) => {
+          if (cloudUrl && cloudUrl !== localDataUrl) {
+            await updateUserProfile({ profilePhoto: cloudUrl });
+          }
+        })
+        .catch((storageErr) => {
+          console.warn('Background storage sync notice:', storageErr);
+        });
     } catch (err: any) {
       console.error('Photo upload error:', err);
       showToast('error', 'Upload Failed', err.message || 'Could not update photo.');
@@ -99,14 +116,31 @@ export const ProfilePage: React.FC = () => {
       showToast('warning', 'Required', 'Name cannot be empty.');
       return;
     }
+    const parsedAge = Number(age);
+    const parsedHeight = Number(height);
+    const parsedWeight = Number(currentWeight);
+
+    if (isNaN(parsedAge) || parsedAge < 10 || parsedAge > 120) {
+      showToast('warning', 'Invalid Age', 'Please enter a valid age between 10 and 120.');
+      return;
+    }
+    if (isNaN(parsedHeight) || parsedHeight < 50 || parsedHeight > 250) {
+      showToast('warning', 'Invalid Height', 'Please enter a valid height in cm.');
+      return;
+    }
+    if (isNaN(parsedWeight) || parsedWeight < 20 || parsedWeight > 350) {
+      showToast('warning', 'Invalid Weight', 'Please enter a valid weight in kg.');
+      return;
+    }
+
     setSaving(true);
     try {
       await updateUserProfile({
         name,
-        age: Number(age),
+        age: parsedAge,
         gender,
-        height: Number(height),
-        currentWeight: Number(currentWeight),
+        height: parsedHeight,
+        currentWeight: parsedWeight,
         fitnessGoal,
         fitnessLevel,
       });
@@ -181,11 +215,11 @@ export const ProfilePage: React.FC = () => {
               <Camera className="w-4 h-4" />
             </button>
 
-            {/* Hidden File Input */}
+            {/* Hidden File Input (accept all image types for mobile & desktop) */}
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/png,image/jpeg,image/webp,image/gif"
+              accept="image/*"
               onChange={handlePhotoUpload}
               disabled={photoUploading}
               className="hidden"
@@ -198,7 +232,7 @@ export const ProfilePage: React.FC = () => {
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={photoUploading}
-              className="px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-bold transition-colors flex items-center gap-1.5"
+              className="px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer"
             >
               <Upload className="w-3.5 h-3.5" />
               <span>Upload Photo</span>
@@ -207,7 +241,7 @@ export const ProfilePage: React.FC = () => {
             <button
               type="button"
               onClick={() => setShowPresets(!showPresets)}
-              className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold transition-colors flex items-center gap-1.5"
+              className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer"
             >
               <Sparkles className="w-3.5 h-3.5 text-amber-500" />
               <span>Avatars</span>
@@ -218,7 +252,7 @@ export const ProfilePage: React.FC = () => {
                 type="button"
                 onClick={handleRemovePhoto}
                 disabled={photoUploading}
-                className="p-1.5 rounded-xl text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-xs transition-colors"
+                className="p-1.5 rounded-xl text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-xs transition-colors cursor-pointer"
                 title="Remove photo"
               >
                 <Trash2 className="w-3.5 h-3.5" />
@@ -330,7 +364,7 @@ export const ProfilePage: React.FC = () => {
                   min="10"
                   max="120"
                   value={age}
-                  onChange={(e) => setAge(Number(e.target.value))}
+                  onChange={(e) => setAge(e.target.value)}
                   required
                   className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
@@ -361,7 +395,7 @@ export const ProfilePage: React.FC = () => {
                   min="100"
                   max="250"
                   value={height}
-                  onChange={(e) => setHeight(Number(e.target.value))}
+                  onChange={(e) => setHeight(e.target.value)}
                   required
                   className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
@@ -377,7 +411,7 @@ export const ProfilePage: React.FC = () => {
                   max="300"
                   step="0.1"
                   value={currentWeight}
-                  onChange={(e) => setCurrentWeight(Number(e.target.value))}
+                  onChange={(e) => setCurrentWeight(e.target.value)}
                   required
                   className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
@@ -429,7 +463,7 @@ export const ProfilePage: React.FC = () => {
           </form>
 
           {/* BMI Status Card */}
-          <BMICard currentWeight={currentWeight} height={height} />
+          <BMICard currentWeight={Number(currentWeight) || 70} height={Number(height) || 175} />
         </div>
       </div>
     </div>

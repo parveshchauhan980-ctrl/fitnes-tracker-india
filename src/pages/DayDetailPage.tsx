@@ -50,16 +50,16 @@ export const DayDetailPage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editMode, setEditMode] = useState(false);
 
-  const [weight, setWeight] = useState<number>(existingSubmission?.weight || userProfile?.currentWeight || 70);
-  const [steps, setSteps] = useState<number>(existingSubmission?.steps || 8000);
-  const [water, setWater] = useState<number>(existingSubmission?.water || 2.5);
-  const [workoutDuration, setWorkoutDuration] = useState<number>(
-    existingSubmission?.workoutDuration || task?.duration || 25
+  const [weight, setWeight] = useState<number | string>(existingSubmission?.weight ?? userProfile?.currentWeight ?? 70);
+  const [steps, setSteps] = useState<number | string>(existingSubmission?.steps ?? 8000);
+  const [water, setWater] = useState<number | string>(existingSubmission?.water ?? 2.5);
+  const [workoutDuration, setWorkoutDuration] = useState<number | string>(
+    existingSubmission?.workoutDuration ?? task?.duration ?? 25
   );
-  const [caloriesBurned, setCaloriesBurned] = useState<number>(
-    existingSubmission?.caloriesBurned || task?.caloriesTarget || 250
+  const [caloriesBurned, setCaloriesBurned] = useState<number | string>(
+    existingSubmission?.caloriesBurned ?? task?.caloriesTarget ?? 250
   );
-  const [sleepHours, setSleepHours] = useState<number>(existingSubmission?.sleepHours || 7.5);
+  const [sleepHours, setSleepHours] = useState<number | string>(existingSubmission?.sleepHours ?? 7.5);
   const [mood, setMood] = useState<DailyProgress['mood']>(existingSubmission?.mood || 'Good');
   const [notes, setNotes] = useState<string>(existingSubmission?.notes || '');
 
@@ -165,24 +165,31 @@ export const DayDetailPage: React.FC = () => {
     e.preventDefault();
     setValidationError('');
 
+    const numWeight = parseFloat(String(weight));
+    const numSteps = parseInt(String(steps), 10);
+    const numWater = parseFloat(String(water));
+    const numWorkoutDuration = parseInt(String(workoutDuration), 10);
+    const numCaloriesBurned = parseInt(String(caloriesBurned), 10);
+    const numSleepHours = parseFloat(String(sleepHours));
+
     // Strict validation
-    if (!weight || weight < 25 || weight > 350) {
+    if (isNaN(numWeight) || numWeight < 25 || numWeight > 350) {
       setValidationError('Please enter a realistic positive weight (e.g. 70.5 kg).');
       return;
     }
-    if (steps < 0 || steps > 100000) {
+    if (isNaN(numSteps) || numSteps < 0 || numSteps > 100000) {
       setValidationError('Step count cannot be negative or absurdly high.');
       return;
     }
-    if (water < 0 || water > 15) {
+    if (isNaN(numWater) || numWater < 0 || numWater > 15) {
       setValidationError('Water intake must be a positive number of liters (e.g. 2.5L).');
       return;
     }
-    if (workoutDuration < 0 || workoutDuration > 600) {
+    if (isNaN(numWorkoutDuration) || numWorkoutDuration < 0 || numWorkoutDuration > 600) {
       setValidationError('Workout duration cannot be negative.');
       return;
     }
-    if (sleepHours < 0 || sleepHours > 24) {
+    if (isNaN(numSleepHours) || numSleepHours < 0 || numSleepHours > 24) {
       setValidationError('Sleep hours must be between 0 and 24.');
       return;
     }
@@ -204,12 +211,12 @@ export const DayDetailPage: React.FC = () => {
       await submitDailyWorkout({
         dayNumber: dayNum,
         date: new Date().toISOString().split('T')[0],
-        weight: Number(weight),
-        steps: Number(steps),
-        water: Number(water),
-        workoutDuration: Number(workoutDuration),
-        caloriesBurned: Number(caloriesBurned),
-        sleepHours: Number(sleepHours),
+        weight: numWeight,
+        steps: numSteps,
+        water: numWater,
+        workoutDuration: numWorkoutDuration,
+        caloriesBurned: isNaN(numCaloriesBurned) ? 0 : numCaloriesBurned,
+        sleepHours: numSleepHours,
         mood,
         notes,
         progressPhotoUrl: finalPhotoUrl,
@@ -585,7 +592,7 @@ export const DayDetailPage: React.FC = () => {
                   min="25"
                   max="350"
                   value={weight}
-                  onChange={(e) => setWeight(parseFloat(e.target.value) || 0)}
+                  onChange={(e) => setWeight(e.target.value)}
                   required
                   className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-sm font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none"
                 />
@@ -601,7 +608,7 @@ export const DayDetailPage: React.FC = () => {
                   min="0"
                   max="100000"
                   value={steps}
-                  onChange={(e) => setSteps(parseInt(e.target.value) || 0)}
+                  onChange={(e) => setSteps(e.target.value)}
                   required
                   className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-sm font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none"
                 />
@@ -618,7 +625,7 @@ export const DayDetailPage: React.FC = () => {
                   min="0"
                   max="15"
                   value={water}
-                  onChange={(e) => setWater(parseFloat(e.target.value) || 0)}
+                  onChange={(e) => setWater(e.target.value)}
                   required
                   className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-sm font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none"
                 />
@@ -636,7 +643,7 @@ export const DayDetailPage: React.FC = () => {
                   min="1"
                   max="400"
                   value={workoutDuration}
-                  onChange={(e) => setWorkoutDuration(parseInt(e.target.value) || 0)}
+                  onChange={(e) => setWorkoutDuration(e.target.value)}
                   required
                   className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-sm font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none"
                 />
@@ -652,7 +659,7 @@ export const DayDetailPage: React.FC = () => {
                   min="0"
                   max="4000"
                   value={caloriesBurned}
-                  onChange={(e) => setCaloriesBurned(parseInt(e.target.value) || 0)}
+                  onChange={(e) => setCaloriesBurned(e.target.value)}
                   className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-sm font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none"
                 />
               </div>
@@ -668,7 +675,7 @@ export const DayDetailPage: React.FC = () => {
                   min="1"
                   max="24"
                   value={sleepHours}
-                  onChange={(e) => setSleepHours(parseFloat(e.target.value) || 0)}
+                  onChange={(e) => setSleepHours(e.target.value)}
                   className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-sm font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none"
                 />
               </div>

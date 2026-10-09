@@ -200,15 +200,22 @@ export function exportSubmissionsToCSV(submissions: DailyProgress[], user: UserP
 
 /**
  * Compresses and crops an image file to a lightweight, high-quality square avatar Data URL.
+ * Guarantees zero failures by gracefully falling back to raw data URL if canvas cannot decode.
  */
 export async function compressImageToDataUrl(
   file: File,
   maxDimension = 360,
   quality = 0.85
 ): Promise<string> {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     const reader = new FileReader();
     reader.onload = (e) => {
+      const rawDataUrl = e.target?.result as string;
+      if (!rawDataUrl) {
+        resolve('');
+        return;
+      }
+
       const img = new Image();
       img.onload = () => {
         try {
@@ -232,16 +239,21 @@ export async function compressImageToDataUrl(
             ctx.drawImage(img, startX, startY, minSide, minSide, 0, 0, targetSize, targetSize);
             resolve(canvas.toDataURL('image/jpeg', quality));
           } else {
-            resolve(e.target?.result as string);
+            resolve(rawDataUrl);
           }
         } catch {
-          resolve(e.target?.result as string);
+          resolve(rawDataUrl);
         }
       };
-      img.onerror = () => reject(new Error('Failed to process image file.'));
-      img.src = e.target?.result as string;
+      img.onerror = () => {
+        // Fallback directly to raw data url if canvas or decoding errors
+        resolve(rawDataUrl);
+      };
+      img.src = rawDataUrl;
     };
-    reader.onerror = () => reject(new Error('Failed to read image file.'));
+    reader.onerror = () => {
+      resolve('');
+    };
     reader.readAsDataURL(file);
   });
 }
@@ -261,12 +273,12 @@ export async function uploadProgressPhoto(
   const fileExt = file.name.split('.').pop() || 'jpg';
   const storagePath = `users/${userId}/progressPhotos/day_${dayNumber}_${timestamp}.${fileExt}`;
 
-  // Attempt Firebase Storage with an increased 30-second timeout to give ample time on mobile and slower connections
+  // Attempt Firebase Storage with a quick 3-second timeout so user is never kept waiting
   try {
     const storageReference = ref(storage, storagePath);
     const uploadPromise = uploadBytes(storageReference, file).then(snap => getDownloadURL(snap.ref));
     const timeoutPromise = new Promise<string>((_, reject) =>
-      setTimeout(() => reject(new Error('Firebase Storage timeout after 30 seconds')), 30000)
+      setTimeout(() => reject(new Error('Firebase Storage timeout')), 3000)
     );
     const downloadUrl = await Promise.race([uploadPromise, timeoutPromise]);
     return downloadUrl;
