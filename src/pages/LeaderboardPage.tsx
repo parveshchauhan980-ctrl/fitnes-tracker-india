@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import { useNotification } from '../context/NotificationContext';
 import { fetchLeaderboardAthletes } from '../services/leaderboardService';
 import { LeaderboardAthlete, FitnessLevel } from '../types';
@@ -22,6 +23,7 @@ type SortMetric = 'streak' | 'completed' | 'consistency';
 
 export const LeaderboardPage: React.FC = () => {
   const { userProfile, updateUserProfile } = useAuth();
+  const { language, t } = useLanguage();
   const { showToast } = useNotification();
 
   const [athletes, setAthletes] = useState<LeaderboardAthlete[]>([]);
@@ -123,14 +125,16 @@ export const LeaderboardPage: React.FC = () => {
               <Trophy className="w-5 h-5" />
             </span>
             <span className="text-xs font-bold uppercase tracking-wider text-amber-500">
-              Community Consistency
+              {language === 'hi' ? 'कम्युनिटी कंसिस्टेंसी' : 'Community Consistency'}
             </span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white font-['Outfit'] tracking-tight">
-            Athlete Leaderboard
+          <h1 className="text-2xl sm:text-4xl font-black text-slate-900 dark:text-white font-['Outfit'] tracking-tight">
+            {language === 'hi' ? 'ग्लोबल एथलीट लीडरबोर्ड' : 'Athlete Leaderboard'}
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Celebrate streaks, discipline, and daily consistency. Private body metrics stay 100% confidential.
+            {language === 'hi'
+              ? 'दैनिक स्ट्रीक, अनुशासन और निरंतरता का उत्सव मनाएं। व्यक्तिगत बॉडी आंकड़े 100% गोपनीय रहते हैं।'
+              : 'Celebrate streaks, discipline, and daily consistency. Private body metrics stay 100% confidential.'}
           </p>
         </div>
 
@@ -139,7 +143,7 @@ export const LeaderboardPage: React.FC = () => {
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-emerald-500" />
             <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
-              Leaderboard Privacy:
+              {language === 'hi' ? 'लीडरबोर्ड प्राइवेसी:' : 'Leaderboard Privacy:'}
             </span>
           </div>
           <button
@@ -152,11 +156,11 @@ export const LeaderboardPage: React.FC = () => {
           >
             {isVisible ? (
               <>
-                <Eye className="w-3.5 h-3.5" /> Public
+                <Eye className="w-3.5 h-3.5" /> {language === 'hi' ? 'सार्वजनिक' : 'Public'}
               </>
             ) : (
               <>
-                <EyeOff className="w-3.5 h-3.5" /> Private
+                <EyeOff className="w-3.5 h-3.5" /> {language === 'hi' ? 'निजी' : 'Private'}
               </>
             )}
           </button>

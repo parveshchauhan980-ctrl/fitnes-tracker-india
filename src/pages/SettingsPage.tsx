@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { useLanguage } from '../context/LanguageContext';
 import { useNotification } from '../context/NotificationContext';
 import { exportSubmissionsToCSV } from '../services/fitnessService';
 import { firebaseConfig } from '../firebase/config';
@@ -14,11 +15,13 @@ import {
   Shield,
   CheckCircle2,
   AlertTriangle,
+  Globe,
 } from 'lucide-react';
 
 export const SettingsPage: React.FC = () => {
   const { userProfile, dailySubmissions, updateUserProfile } = useAuth();
   const { theme, toggleTheme, setTheme } = useTheme();
+  const { language, setLanguage, t } = useLanguage();
   const { showToast, requestNotificationPermission, sendBrowserNotification } = useNotification();
 
   const [workoutReminders, setWorkoutReminders] = useState(true);
@@ -70,18 +73,75 @@ export const SettingsPage: React.FC = () => {
           Preferences
         </span>
         <h1 className="text-2xl sm:text-4xl font-black text-slate-900 dark:text-white font-['Outfit'] tracking-tight">
-          Application Settings
+          {t('appSettings')}
         </h1>
         <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-          Customize your interface theme, reminder alerts, and challenge preferences.
+          {t('settingsSubtitle')}
         </p>
       </div>
 
       <div className="space-y-6">
+        {/* Language Selection Section */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-sm">
+          <div className="flex items-center gap-2.5 mb-1">
+            <Globe className="w-5 h-5 text-emerald-500" />
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+              {t('selectLanguage')}
+            </h3>
+          </div>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mb-6">
+            {t('languageDesc')}
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-md">
+            <button
+              onClick={() => {
+                setLanguage('en');
+                showToast('info', 'Language Updated', 'Language switched to English.');
+              }}
+              className={`p-4 rounded-2xl border flex items-center justify-between transition-all ${
+                language === 'en'
+                  ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20 text-slate-900 dark:text-white ring-2 ring-emerald-500/20 shadow-sm'
+                  : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">🇬🇧</span>
+                <div className="text-left">
+                  <span className="text-sm font-bold block">English</span>
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400">Default application language</span>
+                </div>
+              </div>
+              {language === 'en' && <CheckCircle2 className="w-5 h-5 text-emerald-500" />}
+            </button>
+
+            <button
+              onClick={() => {
+                setLanguage('hi');
+                showToast('info', 'भाषा बदली गई', 'अब वेबसाइट हिंदी में उपलब्ध है।');
+              }}
+              className={`p-4 rounded-2xl border flex items-center justify-between transition-all ${
+                language === 'hi'
+                  ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20 text-slate-900 dark:text-white ring-2 ring-emerald-500/20 shadow-sm'
+                  : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">🇮🇳</span>
+                <div className="text-left">
+                  <span className="text-sm font-bold block">हिंदी</span>
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400">संपूर्ण हिंदी भाषा समर्थन</span>
+                </div>
+              </div>
+              {language === 'hi' && <CheckCircle2 className="w-5 h-5 text-emerald-500" />}
+            </button>
+          </div>
+        </div>
+
         {/* Appearance Section */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-sm">
           <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">
-            Display Theme
+            {t('displayTheme')}
           </h3>
           <p className="text-xs text-slate-500 dark:text-slate-400 mb-6">
             Choose between dark athletic mode or clean light mode.

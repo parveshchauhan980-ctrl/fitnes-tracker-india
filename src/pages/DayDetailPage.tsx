@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import { useNotification } from '../context/NotificationContext';
 import { fetchTaskByDay } from '../services/taskService';
 import { uploadProgressPhoto, getDayStatus } from '../services/fitnessService';
@@ -33,6 +34,7 @@ export const DayDetailPage: React.FC = () => {
   const dayNum = parseInt(dayNumber || '1', 10);
 
   const { userProfile, dailySubmissions, submissionsMap, submitDailyWorkout } = useAuth();
+  const { language, t } = useLanguage();
   const { showToast } = useNotification();
 
   const [task, setTask] = useState<DailyTask | null>(null);
@@ -266,16 +268,18 @@ export const DayDetailPage: React.FC = () => {
           <Lock className="w-8 h-8" />
         </div>
         <h2 className="text-2xl font-black text-slate-900 dark:text-white font-['Outfit']">
-          Day {dayNum} is Locked
+          {language === 'hi' ? `दिन ${dayNum} अभी लॉक है` : `Day ${dayNum} is Locked`}
         </h2>
         <p className="text-sm text-slate-500 leading-relaxed">
-          FitTrack 30 is built on day-by-day consistency. Please complete your current task (Day {currentDay}) to unlock subsequent days.
+          {language === 'hi'
+            ? `FitTrack 30 दैनिक निरंतरता पर आधारित है। अगले दिनों को अनलॉक करने के लिए कृपया आज का टास्क (दिन ${currentDay}) पूरा करें।`
+            : `FitTrack 30 is built on day-by-day consistency. Please complete your current task (Day ${currentDay}) to unlock subsequent days.`}
         </p>
         <Link
           to={`/day/${currentDay}`}
           className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs shadow-md"
         >
-          Go to Day {currentDay} Workout
+          {language === 'hi' ? `दिन ${currentDay} वर्कआउट पर जाएं` : `Go to Day ${currentDay} Workout`}
         </Link>
       </div>
     );
@@ -290,7 +294,7 @@ export const DayDetailPage: React.FC = () => {
           className="inline-flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
-          Back to 30-Day Grid
+          {language === 'hi' ? '30-दिन ग्रिड पर वापस जाएं' : 'Back to 30-Day Grid'}
         </Link>
 
         <div className="flex items-center gap-2">

@@ -1,5 +1,6 @@
 import React from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import { DEFAULT_ACHIEVEMENTS } from '../data/defaultAchievements';
 import { Achievement } from '../types';
 import confetti from 'canvas-confetti';
@@ -20,6 +21,7 @@ import {
 
 export const AchievementsPage: React.FC = () => {
   const { userProfile, dailySubmissions } = useAuth();
+  const { language, t } = useLanguage();
 
   const completedDays = userProfile?.completedDays || 0;
   const currentStreak = userProfile?.currentStreak || 0;
@@ -95,19 +97,21 @@ export const AchievementsPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <span className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-            Milestones & Badges
+            {language === 'hi' ? 'मील के पत्थर और बैज' : 'Milestones & Badges'}
           </span>
           <h1 className="text-2xl sm:text-4xl font-black text-slate-900 dark:text-white font-['Outfit'] tracking-tight">
-            Challenge Achievements
+            {language === 'hi' ? 'चैलेंज उपलब्धियां व ट्रॉफ़ियां' : 'Challenge Achievements'}
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Unlock distinctive badges by maintaining workout streaks and completing program milestones.
+            {language === 'hi'
+              ? 'दैनिक वर्कआउट स्ट्रीक और माइलस्टोन पूरे करके आकर्षक बैज अनलॉक करें।'
+              : 'Unlock distinctive badges by maintaining workout streaks and completing program milestones.'}
           </p>
         </div>
 
         <div className="flex items-center gap-3">
           <div className="px-4 py-2 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm text-xs font-bold">
-            <span className="text-slate-400 mr-2">Badges Unlocked:</span>
+            <span className="text-slate-400 mr-2">{language === 'hi' ? 'अनलॉक बैज:' : 'Badges Unlocked:'}</span>
             <span className="text-emerald-500 font-extrabold">{unlockedCount} / {DEFAULT_ACHIEVEMENTS.length}</span>
           </div>
           {unlockedCount > 0 && (

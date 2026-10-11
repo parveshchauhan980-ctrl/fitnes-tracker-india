@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import { fetchTaskByDay } from '../services/taskService';
 import { calculateBMI } from '../services/fitnessService';
 import { ProgressRing } from '../components/common/ProgressRing';
@@ -27,6 +28,7 @@ import {
 
 export const DashboardPage: React.FC = () => {
   const { userProfile, dailySubmissions, submissionsMap } = useAuth();
+  const { language, t } = useLanguage();
   const navigate = useNavigate();
 
   const [todayTask, setTodayTask] = useState<DailyTask | null>(null);
@@ -39,9 +41,9 @@ export const DashboardPage: React.FC = () => {
   // Time-based greeting
   const getGreeting = () => {
     const hour = new Date().getHours();
-    if (hour < 12) return 'Good morning';
-    if (hour < 18) return 'Good afternoon';
-    return 'Good evening';
+    if (hour < 12) return t('greetingMorning');
+    if (hour < 18) return t('greetingAfternoon');
+    return t('greetingEvening');
   };
 
   useEffect(() => {
@@ -117,15 +119,19 @@ export const DashboardPage: React.FC = () => {
             <div>
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-xs font-extrabold tracking-wider uppercase mb-3">
                 <Flame className="w-3.5 h-3.5" />
-                Challenge Status
+                {language === 'hi' ? 'चैलेंज स्थिति' : 'Challenge Status'}
               </div>
               <h2 className="text-3xl sm:text-5xl font-black font-['Outfit'] tracking-tight text-white mb-2">
-                DAY {currentDay} <span className="text-slate-500 text-2xl sm:text-3xl font-normal">/ 30</span>
+                {t('day').toUpperCase()} {currentDay} <span className="text-slate-500 text-2xl sm:text-3xl font-normal">/ 30</span>
               </h2>
               <p className="text-slate-300 text-sm max-w-sm leading-relaxed">
                 {isTodayCompleted
-                  ? `Day ${currentDay} progress recorded! Tomorrow unlocks at midnight.`
-                  : `Complete your Day ${currentDay} workout and submit your daily log to maintain your streak.`}
+                  ? (language === 'hi'
+                      ? `दिन ${currentDay} की प्रगति दर्ज कर ली गई है! कल का वर्कआउट आधी रात को खुलेगा।`
+                      : `Day ${currentDay} progress recorded! Tomorrow unlocks at midnight.`)
+                  : (language === 'hi'
+                      ? `दिन ${currentDay} का वर्कआउट पूरा करें और स्ट्रीक बनाए रखने के लिए दैनिक लॉग सबमिट करें।`
+                      : `Complete your Day ${currentDay} workout and submit your daily log to maintain your streak.`)}
               </p>
             </div>
 
@@ -137,7 +143,7 @@ export const DashboardPage: React.FC = () => {
                 color="stroke-emerald-400"
                 trackColor="stroke-slate-800"
                 label={`${completionPercentage}%`}
-                sublabel="Finished"
+                sublabel={language === 'hi' ? 'पूर्ण' : 'Finished'}
               />
             </div>
           </div>
@@ -145,17 +151,17 @@ export const DashboardPage: React.FC = () => {
           <div className="mt-8 pt-6 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-4 relative z-10">
             <div className="flex items-center gap-6">
               <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Completed</span>
-                <span className="text-lg font-black block font-['Outfit']">{completedDays} Days</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{t('completed')}</span>
+                <span className="text-lg font-black block font-['Outfit']">{completedDays} {t('day')}</span>
               </div>
               <div className="h-6 w-px bg-slate-800" />
               <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Remaining</span>
-                <span className="text-lg font-black block font-['Outfit']">{30 - completedDays} Days</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{language === 'hi' ? 'शेष दिन' : 'Remaining'}</span>
+                <span className="text-lg font-black block font-['Outfit']">{30 - completedDays} {t('day')}</span>
               </div>
               <div className="h-6 w-px bg-slate-800" />
               <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Goal</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{language === 'hi' ? 'लक्ष्य' : 'Goal'}</span>
                 <span className="text-lg font-black block font-['Outfit']">{userProfile?.fitnessGoal || 'General'}</span>
               </div>
             </div>
@@ -164,7 +170,7 @@ export const DashboardPage: React.FC = () => {
               to={`/day/${currentDay}`}
               className="inline-flex items-center gap-2 text-xs font-bold text-emerald-400 hover:text-emerald-300 transition-colors"
             >
-              Open Day {currentDay} Checklist
+              {language === 'hi' ? `दिन ${currentDay} चेकलिस्ट खोलें` : `Open Day ${currentDay} Checklist`}
               <ChevronRight className="w-4 h-4" />
             </Link>
           </div>
@@ -196,7 +202,7 @@ export const DashboardPage: React.FC = () => {
       {/* KPI Stats Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
         <StatsCard
-          label="Current Weight"
+          label={language === 'hi' ? 'वर्तमान वजन' : 'Current Weight'}
           value={userProfile?.currentWeight || 70}
           unit="kg"
           icon={TrendingDown}
@@ -205,37 +211,37 @@ export const DashboardPage: React.FC = () => {
           positive={weightChange <= 0}
         />
         <StatsCard
-          label="Body Mass Index"
+          label={language === 'hi' ? 'बीएमआई स्कोर' : 'Body Mass Index'}
           value={userProfile?.bmi || 22.5}
           unit="BMI"
           icon={Zap}
           colorScheme="blue"
         />
         <StatsCard
-          label="Workout Time"
+          label={language === 'hi' ? 'वर्कआउट समय' : 'Workout Time'}
           value={userProfile?.totalWorkoutMinutes || 0}
-          unit="mins"
+          unit={language === 'hi' ? 'मिनट' : 'mins'}
           icon={Clock}
           colorScheme="purple"
         />
         <StatsCard
-          label="Total Steps"
+          label={language === 'hi' ? 'कुल कदम' : 'Total Steps'}
           value={(userProfile?.totalSteps || 0).toLocaleString()}
-          unit="steps"
+          unit={language === 'hi' ? 'कदम' : 'steps'}
           icon={Footprints}
           colorScheme="amber"
         />
         <StatsCard
-          label="Total Water"
+          label={language === 'hi' ? 'कुल पानी' : 'Total Water'}
           value={userProfile?.totalWater || 0}
-          unit="Liters"
+          unit={language === 'hi' ? 'लीटर' : 'Liters'}
           icon={Droplet}
           colorScheme="rose"
         />
         <StatsCard
-          label="Badges Unlocked"
+          label={language === 'hi' ? 'प्राप्त बैज' : 'Badges Unlocked'}
           value={completedDays >= 30 ? 8 : completedDays >= 15 ? 5 : completedDays >= 1 ? 2 : 0}
-          unit="earned"
+          unit={language === 'hi' ? 'बैज' : 'earned'}
           icon={Award}
           colorScheme="slate"
         />

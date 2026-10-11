@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useLanguage } from '../../context/LanguageContext';
 import { ToastContainer } from '../common/ToastContainer';
 import { PWAInstallButton } from '../pwa/PWAInstallButton';
 import { OfflineIndicator } from '../pwa/OfflineIndicator';
@@ -22,6 +23,7 @@ import {
   Flame,
   Dumbbell,
   CheckCircle2,
+  Globe,
 } from 'lucide-react';
 
 interface AppLayoutProps {
@@ -31,6 +33,7 @@ interface AppLayoutProps {
 export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const { userProfile, isAdmin, logoutUser } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const { language, toggleLanguage, setLanguage, t } = useLanguage();
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -45,18 +48,18 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   };
 
   const navItems = [
-    { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-    { label: '30-Day Challenge', path: '/challenge', icon: CalendarDays },
-    { label: 'Leaderboard', path: '/leaderboard', icon: Award },
-    { label: 'Progress & Charts', path: '/progress', icon: LineChart },
-    { label: 'Achievements', path: '/achievements', icon: Trophy },
-    { label: 'Profile', path: '/profile', icon: User },
-    { label: 'Settings', path: '/settings', icon: Settings },
+    { label: t('navDashboard'), path: '/dashboard', icon: LayoutDashboard },
+    { label: t('navChallenge'), path: '/challenge', icon: CalendarDays },
+    { label: t('navLeaderboard'), path: '/leaderboard', icon: Award },
+    { label: t('navProgress'), path: '/progress', icon: LineChart },
+    { label: t('navAchievements'), path: '/achievements', icon: Trophy },
+    { label: t('navProfile'), path: '/profile', icon: User },
+    { label: t('navSettings'), path: '/settings', icon: Settings },
   ];
 
   if (isAdmin) {
     navItems.push({
-      label: 'Admin Portal',
+      label: t('navAdmin'),
       path: '/admin',
       icon: ShieldAlert,
     });
@@ -79,7 +82,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
                 FitTrack <span className="text-emerald-500">30</span>
               </span>
               <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">
-                Health Challenge
+                {t('healthChallenge')}
               </span>
             </div>
           </Link>
@@ -100,12 +103,12 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
                     {userProfile.name}
                   </div>
                   <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
-                    <Flame className="w-3.5 h-3.5 inline" /> {userProfile.currentStreak || 0}d streak
+                    <Flame className="w-3.5 h-3.5 inline" /> {userProfile.currentStreak || 0}d {t('streak')}
                   </div>
                 </div>
               </div>
               <div className="text-right">
-                <span className="text-[10px] uppercase font-bold text-slate-400 block">Day</span>
+                <span className="text-[10px] uppercase font-bold text-slate-400 block">{t('day')}</span>
                 <span className="text-sm font-black text-slate-900 dark:text-white font-['Outfit']">
                   {userProfile.currentDay}/30
                 </span>
@@ -149,9 +152,25 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         </div>
 
         {/* Sidebar Footer */}
-        <div className="pt-3 border-t border-slate-200 dark:border-slate-800 space-y-3">
+        <div className="pt-3 border-t border-slate-200 dark:border-slate-800 space-y-2.5">
+          {/* Language Switcher */}
           <div className="flex items-center justify-between px-2">
-            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Theme</span>
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+              <Globe className="w-3.5 h-3.5 text-emerald-500" />
+              <span>{t('language')}</span>
+            </span>
+            <button
+              onClick={toggleLanguage}
+              className="px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors flex items-center gap-1 border border-slate-200 dark:border-slate-700"
+              title="Switch Language (हिंदी / English)"
+            >
+              <span>{language === 'en' ? '🇬🇧 English' : '🇮🇳 हिंदी'}</span>
+            </button>
+          </div>
+
+          {/* Theme Switcher */}
+          <div className="flex items-center justify-between px-2">
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">{t('theme')}</span>
             <button
               onClick={toggleTheme}
               className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
@@ -166,7 +185,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
             className="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
           >
             <LogOut className="w-4 h-4" />
-            <span>Sign Out</span>
+            <span>{t('signOut')}</span>
           </button>
         </div>
       </aside>
@@ -185,10 +204,20 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         <div className="flex items-center gap-1.5">
           <PWAInstallButton variant="header" />
 
+          {/* Mobile Language Switcher */}
+          <button
+            onClick={toggleLanguage}
+            className="px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-xs font-black text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 flex items-center gap-1"
+            title="Switch Language (हिंदी / English)"
+          >
+            <Globe className="w-3.5 h-3.5 text-emerald-500" />
+            <span>{language === 'en' ? 'EN' : 'हिन्दी'}</span>
+          </button>
+
           {userProfile && (
             <div className="hidden sm:flex px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-bold items-center gap-1">
               <CheckCircle2 className="w-3.5 h-3.5" />
-              <span>Day {userProfile.currentDay}/30</span>
+              <span>{t('day')} {userProfile.currentDay}/30</span>
             </div>
           )}
 

@@ -8,6 +8,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-route
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { NotificationProvider } from './context/NotificationContext';
+import { LanguageProvider } from './context/LanguageContext';
 import { AppLayout } from './components/layout/AppLayout';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 
@@ -92,9 +93,10 @@ export default function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider>
-        <NotificationProvider>
-          <AuthProvider>
-            <BrowserRouter basename={getRouterBasename()}>
+        <LanguageProvider>
+          <NotificationProvider>
+            <AuthProvider>
+              <BrowserRouter basename={getRouterBasename()}>
               <Routes>
               {/* Public Routes */}
               <Route path="/" element={<LandingPage />} />
@@ -207,7 +209,8 @@ export default function App() {
           </BrowserRouter>
         </AuthProvider>
       </NotificationProvider>
-    </ThemeProvider>
-  </ErrorBoundary>
+    </LanguageProvider>
+  </ThemeProvider>
+</ErrorBoundary>
   );
 }

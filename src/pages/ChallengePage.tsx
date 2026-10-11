@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import { fetchAllTasks } from '../services/taskService';
 import { getDayStatus } from '../services/fitnessService';
 import { DailyTask, DayStatus } from '../types';
@@ -18,6 +19,7 @@ import {
 
 export const ChallengePage: React.FC = () => {
   const { userProfile, dailySubmissions, submissionsMap } = useAuth();
+  const { language, t } = useLanguage();
   const [tasks, setTasks] = useState<DailyTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'completed' | 'uncompleted'>('all');
@@ -50,26 +52,26 @@ export const ChallengePage: React.FC = () => {
       case 'COMPLETED':
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
-            <CheckCircle2 className="w-3 h-3" /> COMPLETED
+            <CheckCircle2 className="w-3 h-3" /> {language === 'hi' ? 'पूर्ण ✓' : 'COMPLETED'}
           </span>
         );
       case 'TODAY':
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 animate-pulse">
-            <Flame className="w-3 h-3" /> TODAY'S TASK
+            <Flame className="w-3 h-3" /> {language === 'hi' ? 'आज का टास्क' : "TODAY'S TASK"}
           </span>
         );
       case 'MISSED':
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/30">
-            <AlertTriangle className="w-3 h-3" /> MISSED
+            <AlertTriangle className="w-3 h-3" /> {language === 'hi' ? 'छूट गया' : 'MISSED'}
           </span>
         );
       case 'LOCKED':
       default:
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-slate-100 dark:bg-slate-800 text-slate-400 border border-slate-200 dark:border-slate-700">
-            <Lock className="w-3 h-3" /> LOCKED
+            <Lock className="w-3 h-3" /> {language === 'hi' ? 'लॉक 🔒' : 'LOCKED'}
           </span>
         );
     }
@@ -81,21 +83,23 @@ export const ChallengePage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <span className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-            The Roadmap
+            {language === 'hi' ? '30-दिवसीय रोडमैप' : 'The Roadmap'}
           </span>
           <h1 className="text-2xl sm:text-4xl font-black text-slate-900 dark:text-white font-['Outfit'] tracking-tight">
-            30-Day Challenge Grid
+            {language === 'hi' ? '30-दिन फिटनेस चैलेंज ग्रिड' : '30-Day Challenge Grid'}
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Complete daily workouts in order. Each day unlocks after submitting your verified progress.
+            {language === 'hi'
+              ? 'दैनिक वर्कआउट क्रम से पूरा करें। प्रगति सबमिट करने पर अगला दिन अनलॉक होता है।'
+              : 'Complete daily workouts in order. Each day unlocks after submitting your verified progress.'}
           </p>
         </div>
 
         {/* Challenge summary pill */}
         <div className="flex items-center gap-3">
           <div className="px-4 py-2 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm text-xs font-bold">
-            <span className="text-slate-400 mr-2">Progress:</span>
-            <span className="text-emerald-500">{completedDaysCount} / 30 Completed</span>
+            <span className="text-slate-400 mr-2">{language === 'hi' ? 'प्रगति:' : 'Progress:'}</span>
+            <span className="text-emerald-500">{completedDaysCount} / 30 {language === 'hi' ? 'पूर्ण' : 'Completed'}</span>
             <span className="ml-2 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px]">
               {completionPercentage}%
             </span>

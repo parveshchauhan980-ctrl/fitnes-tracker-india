@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import { useNotification } from '../context/NotificationContext';
 import { calculateBMI, uploadProgressPhoto, compressImageToDataUrl } from '../services/fitnessService';
 import { BMICard } from '../components/common/BMICard';
@@ -30,6 +31,7 @@ const PRESET_AVATARS = [
 
 export const ProfilePage: React.FC = () => {
   const { userProfile, updateUserProfile } = useAuth();
+  const { language, t } = useLanguage();
   const { showToast } = useNotification();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -157,13 +159,13 @@ export const ProfilePage: React.FC = () => {
       {/* Header */}
       <div>
         <span className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-          Personal Information
+          {language === 'hi' ? 'व्यक्तिगत जानकारी' : 'Personal Information'}
         </span>
         <h1 className="text-2xl sm:text-4xl font-black text-slate-900 dark:text-white font-['Outfit'] tracking-tight">
-          Athlete Profile
+          {t('athleteProfile')}
         </h1>
         <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-          Manage your account baseline, physical parameters, and training preferences.
+          {t('profileSubtitle')}
         </p>
       </div>
 
@@ -235,7 +237,7 @@ export const ProfilePage: React.FC = () => {
               className="px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer"
             >
               <Upload className="w-3.5 h-3.5" />
-              <span>Upload Photo</span>
+              <span>{t('uploadPhoto')}</span>
             </button>
 
             <button
@@ -244,7 +246,7 @@ export const ProfilePage: React.FC = () => {
               className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer"
             >
               <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-              <span>Avatars</span>
+              <span>{language === 'hi' ? 'अवतार' : 'Avatars'}</span>
             </button>
 
             {userProfile?.profilePhoto && (
@@ -253,7 +255,7 @@ export const ProfilePage: React.FC = () => {
                 onClick={handleRemovePhoto}
                 disabled={photoUploading}
                 className="p-1.5 rounded-xl text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-xs transition-colors cursor-pointer"
-                title="Remove photo"
+                title={t('removePhoto')}
               >
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
@@ -457,7 +459,7 @@ export const ProfilePage: React.FC = () => {
                 className="py-3 px-6 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold text-sm shadow-lg shadow-emerald-500/25 transition-all flex items-center gap-2 disabled:opacity-50"
               >
                 <Save className="w-4 h-4" />
-                {saving ? 'Saving...' : 'Save Profile Changes'}
+                {saving ? t('saving') : t('saveChanges')}
               </button>
             </div>
           </form>
