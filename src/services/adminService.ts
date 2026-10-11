@@ -1,4 +1,4 @@
-import { collection, getDocs, updateDoc, doc, collectionGroup } from 'firebase/firestore';
+import { collection, getDocs, updateDoc, doc, onSnapshot } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../firebase/config';
 import { UserProfile, DailyProgress } from '../types';
 
@@ -15,7 +15,7 @@ export async function fetchAllUsers(): Promise<UserProfile[]> {
   try {
     const snap = await getDocs(collection(db, 'users'));
     const list: UserProfile[] = [];
-    snap.forEach(d => {
+    snap.forEach((d) => {
       list.push({ id: d.id, ...d.data() } as UserProfile);
     });
     return list;
@@ -24,17 +24,37 @@ export async function fetchAllUsers(): Promise<UserProfile[]> {
   }
 }
 
-export async function fetchAllSubmissionsAdmin(): Promise<(DailyProgress & { userName?: string; userEmail?: string })[]> {
+export function subscribeToUsers(
+  onUpdate: (users: UserProfile[]) => void,
+  onError?: (err: any) => void
+) {
+  return onSnapshot(
+    collection(db, 'users'),
+    (snap) => {
+      const list: UserProfile[] = [];
+      snap.forEach((d) => {
+        list.push({ id: d.id, ...d.data() } as UserProfile);
+      });
+      onUpdate(list);
+    },
+    (err) => {
+      console.warn('Real-time users subscription notice:', err);
+      if (onError) onError(err);
+    }
+  );
+}
+
+export async function fetchAllSubmissionsAdmin(
+  existingUsers?: UserProfile[]
+): Promise<(DailyProgress & { userName?: string; userEmail?: string })[]> {
   try {
-    // Read submissions across users
-    // If collectionGroup is allowed, or query users and their dailyProgress subcollections
-    const users = await fetchAllUsers();
+    const users = existingUsers && existingUsers.length > 0 ? existingUsers : await fetchAllUsers();
     const allSubs: (DailyProgress & { userName?: string; userEmail?: string })[] = [];
 
     for (const u of users) {
       try {
         const subSnap = await getDocs(collection(db, `users/${u.id}/dailyProgress`));
-        subSnap.forEach(d => {
+        subSnap.forEach((d) => {
           allSubs.push({
             id: d.id,
             userName: u.name,
@@ -64,19 +84,30 @@ export async function toggleUserStatus(userId: string, disabled: boolean): Promi
 }
 
 export async function computeAdminStats(): Promise<AdminStats> {
-  const users = await fetchAllUsers();
-  const allSubs = await fetchAllSubmissionsAdmin();
+  let users: UserProfile[] = [];
+  try {
+    users = await fetchAllUsers();
+  } catch (err) {
+    console.warn('computeAdminStats fetch users warning:', err);
+  }
+
+  let allSubs: (DailyProgress & { userName?: string; userEmail?: string })[] = [];
+  try {
+    allSubs = await fetchAllSubmissionsAdmin(users);
+  } catch (err) {
+    console.warn('computeAdminStats fetch submissions warning:', err);
+  }
 
   const totalUsers = users.length;
-  const completedChallenges = users.filter(u => (u.completedDays || 0) >= 30).length;
-  const activeChallenges = users.filter(u => (u.completedDays || 0) > 0 && (u.completedDays || 0) < 30).length;
+  const completedChallenges = users.filter((u) => (u.completedDays || 0) >= 30).length;
+  const activeChallenges = users.filter((u) => (u.completedDays || 0) > 0 && (u.completedDays || 0) < 30).length;
 
   const totalCompletedDaysSum = users.reduce((acc, u) => acc + (u.completedDays || 0), 0);
   const averageCompletionRate = totalUsers > 0 ? Math.round((totalCompletedDaysSum / (totalUsers * 30)) * 100) : 0;
 
-  const recentRegistrations = [...users].sort((a, b) => 
-    new Date(b.createdAt || '').getTime() - new Date(a.createdAt || '').getTime()
-  ).slice(0, 5);
+  const recentRegistrations = [...users]
+    .sort((a, b) => new Date(b.createdAt || '').getTime() - new Date(a.createdAt || '').getTime())
+    .slice(0, 5);
 
   return {
     totalUsers,

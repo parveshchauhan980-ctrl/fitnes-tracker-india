@@ -20,7 +20,7 @@ import {
   query,
   orderBy,
 } from 'firebase/firestore';
-import { auth, db, handleFirestoreError, OperationType } from '../firebase/config';
+import { auth, db, handleFirestoreError, OperationType, cleanForFirestore } from '../firebase/config';
 import { UserProfile, DailyProgress, FitnessGoal, FitnessLevel, Gender, UserRole } from '../types';
 import { calculateBMI, computeStreaks } from '../services/fitnessService';
 
@@ -84,8 +84,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const profile: UserProfile = {
           ...data,
           id: user.uid,
-          role: isSuperAdminEmail(user.email) ? 'admin' : 'user',
+          role: isSuperAdminEmail(user.email) ? 'admin' : (data.role || 'user'),
         };
+        if (isSuperAdminEmail(user.email) && data.role !== 'admin') {
+          try {
+            await setDoc(userRef, { role: 'admin' }, { merge: true });
+            await setDoc(doc(db, 'admins', user.uid), {
+              email: user.email,
+              role: 'admin',
+              updatedAt: new Date().toISOString(),
+            }, { merge: true });
+          } catch {}
+        }
         setUserProfile(profile);
         localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(profile));
         return profile;
@@ -104,7 +114,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           bmi: bmiResult.value,
           fitnessGoal: 'General Fitness',
           fitnessLevel: 'Beginner',
-          profilePhoto: user.photoURL || undefined,
+          profilePhoto: user.photoURL || '',
           challengeStartDate: new Date().toISOString(),
           currentDay: 1,
           completedDays: 0,
@@ -119,7 +129,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
 
         try {
-          await setDoc(userRef, newProfile);
+          await setDoc(userRef, cleanForFirestore(newProfile));
+          if (isSuperAdminEmail(user.email)) {
+            try {
+              await setDoc(doc(db, 'admins', user.uid), {
+                email: user.email,
+                role: 'admin',
+                updatedAt: new Date().toISOString(),
+              }, { merge: true });
+            } catch {}
+          }
         } catch (err) {
           console.warn('Firestore write warning:', err);
         }
@@ -299,7 +318,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
 
       try {
-        await setDoc(doc(db, 'users', user.uid), initialProfile);
+        await setDoc(doc(db, 'users', user.uid), cleanForFirestore(initialProfile));
+        if (role === 'admin') {
+          try {
+            await setDoc(doc(db, 'admins', user.uid), {
+              email: data.email,
+              role: 'admin',
+              createdAt: new Date().toISOString(),
+            }, { merge: true });
+          } catch {}
+        }
       } catch (fErr) {
         console.warn('Firestore profile write note:', fErr);
       }
@@ -359,7 +387,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // Attempt to mirror to Firestore if possible
       try {
-        await setDoc(doc(db, 'users', localId), initialProfile);
+        await setDoc(doc(db, 'users', localId), cleanForFirestore(initialProfile));
       } catch (e) {}
     } finally {
       setLoading(false);
@@ -387,7 +415,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // Check if user is superadmin attempting first-time access
       if (isSuperAdminEmail(email)) {
-        console.info('Superadmin session initialized for:', email);
+        console.info('Superadmin access flow for:', email);
+
+        // Attempt first-time auto-creation in Firebase Auth so admin gets a genuine Firebase credential
+        if (code === 'auth/user-not-found' || code === 'auth/invalid-credential') {
+          try {
+            console.info('Auto-creating superadmin account in Firebase Auth...');
+            const newCred = await createUserWithEmailAndPassword(auth, email, pass);
+            await fetchUserProfile(newCred.user);
+            return;
+          } catch (autoErr: any) {
+            console.warn('Superadmin auto-create in Firebase Auth note:', autoErr?.code || autoErr?.message);
+          }
+        }
+
         const adminId = 'admin_' + email.replace(/[^a-zA-Z0-9]/g, '_');
         const bmiResult = calculateBMI(70, 175);
         const adminProfile: UserProfile = {
@@ -577,7 +618,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     if (!currentUser.uid.startsWith('demo_')) {
       try {
-        await setDoc(doc(db, 'users', currentUser.uid), payload, { merge: true });
+        await setDoc(doc(db, 'users', currentUser.uid), cleanForFirestore(payload), { merge: true });
       } catch (err) {
         console.warn('Firestore update note:', err);
       }
@@ -639,8 +680,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Try saving to Firestore if live Firebase account
     if (!currentUser.uid.startsWith('local_') && !currentUser.uid.startsWith('demo_') && !currentUser.uid.startsWith('admin_')) {
       try {
-        await setDoc(doc(db, 'users', currentUser.uid, 'dailyProgress', progressDocId), fullSubmission);
-        await updateDoc(doc(db, 'users', currentUser.uid), profileUpdates);
+        await setDoc(doc(db, 'users', currentUser.uid, 'dailyProgress', progressDocId), cleanForFirestore(fullSubmission));
+        await updateDoc(doc(db, 'users', currentUser.uid), cleanForFirestore(profileUpdates));
       } catch (err) {
         console.warn('Firestore progress write note:', err);
       }

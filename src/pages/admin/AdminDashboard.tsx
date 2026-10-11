@@ -13,24 +13,28 @@ import {
   UserCheck,
   Calendar,
   Layers,
+  RefreshCw,
 } from 'lucide-react';
 
 export const AdminDashboard: React.FC = () => {
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const loadStats = async () => {
+    try {
+      setRefreshing(true);
+      const data = await computeAdminStats();
+      setStats(data);
+    } catch (err) {
+      console.error('Error loading admin stats:', err);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
 
   useEffect(() => {
-    async function loadStats() {
-      try {
-        setLoading(true);
-        const data = await computeAdminStats();
-        setStats(data);
-      } catch (err) {
-        console.error('Error loading admin stats:', err);
-      } finally {
-        setLoading(false);
-      }
-    }
     loadStats();
   }, []);
 
@@ -51,7 +55,16 @@ export const AdminDashboard: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={loadStats}
+            disabled={refreshing}
+            className="px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-800 shadow-sm inline-flex items-center gap-1.5 transition-all"
+            title="Refresh Live Statistics"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin text-purple-600' : ''}`} />
+            {refreshing ? 'Syncing...' : 'Sync Live'}
+          </button>
           <Link
             to="/admin/users"
             className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-800 shadow-sm"

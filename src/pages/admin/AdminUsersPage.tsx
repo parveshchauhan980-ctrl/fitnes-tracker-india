@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { fetchAllUsers, toggleUserStatus } from '../../services/adminService';
+import { fetchAllUsers, toggleUserStatus, subscribeToUsers } from '../../services/adminService';
 import { UserProfile, FitnessGoal } from '../../types';
 import { useNotification } from '../../context/NotificationContext';
 import {
@@ -15,31 +15,53 @@ import {
   Award,
   ChevronRight,
   X,
+  RefreshCw,
+  AlertCircle,
 } from 'lucide-react';
 
 export const AdminUsersPage: React.FC = () => {
   const { showToast } = useNotification();
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [errorNotice, setErrorNotice] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [goalFilter, setGoalFilter] = useState<string>('all');
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
 
   const loadUsers = async () => {
     try {
-      setLoading(true);
+      setRefreshing(true);
       const data = await fetchAllUsers();
       setUsers(data);
-    } catch (err) {
+      setErrorNotice(null);
+    } catch (err: any) {
       console.error(err);
+      setErrorNotice(err?.message || 'Could not load users from Firestore.');
       showToast('error', 'Error', 'Failed to load user directory.');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
   useEffect(() => {
-    loadUsers();
+    setLoading(true);
+    // Listen to real-time updates from Firestore
+    const unsubscribe = subscribeToUsers(
+      (liveUsers) => {
+        setUsers(liveUsers);
+        setLoading(false);
+        setErrorNotice(null);
+      },
+      (err) => {
+        console.warn('Real-time listener notice:', err);
+        setErrorNotice(err?.message || 'Connection notice.');
+        setLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
   }, []);
 
   const handleToggleStatus = async (user: UserProfile) => {
@@ -83,10 +105,34 @@ export const AdminUsersPage: React.FC = () => {
           </p>
         </div>
 
-        <span className="text-xs font-bold px-3.5 py-1.5 rounded-full bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 self-start sm:self-auto">
-          Total Users: {users.length}
-        </span>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <button
+            onClick={loadUsers}
+            disabled={refreshing}
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-800 shadow-sm transition-all"
+            title="Refresh Users from Live Firestore"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin text-purple-600' : ''}`} />
+            {refreshing ? 'Syncing...' : 'Sync Firestore'}
+          </button>
+          <span className="text-xs font-bold px-3.5 py-1.5 rounded-full bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
+            Total Users: {users.length}
+          </span>
+        </div>
       </div>
+
+      {errorNotice && (
+        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-300 text-xs flex items-start gap-3">
+          <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+          <div className="space-y-1">
+            <span className="font-bold block">Firestore Connection Notice</span>
+            <span>{errorNotice}</span>
+            <p className="text-[11px] text-amber-600/80 dark:text-amber-400/80">
+              Tip: If you recently deployed on Netlify, make sure your Netlify domain is added under <strong>Firebase Console &gt; Authentication &gt; Settings &gt; Authorized domains</strong>.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Filter and Search Bar */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm flex flex-col sm:flex-row items-center gap-4">
@@ -120,7 +166,30 @@ export const AdminUsersPage: React.FC = () => {
       {/* Users Table */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-sm">
         {loading ? (
-          <div className="text-center py-12 text-xs font-bold text-slate-400">Loading user catalog...</div>
+          <div className="text-center py-12 text-xs font-bold text-slate-400 flex items-center justify-center gap-2">
+            <div className="w-4 h-4 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+            Loading user catalog...
+          </div>
+        ) : users.length === 0 ? (
+          <div className="text-center py-12 px-4 space-y-3">
+            <div className="w-12 h-12 rounded-2xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center mx-auto">
+              <Users className="w-6 h-6" />
+            </div>
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white">No Athletes in Database Yet</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto leading-relaxed">
+              When a user creates an account or logs in with Google or Email &amp; Password on your site, their live profile will automatically appear here in real time.
+            </p>
+            <div className="pt-2 flex items-center justify-center gap-3">
+              <button
+                onClick={loadUsers}
+                disabled={refreshing}
+                className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-md shadow-purple-600/20 inline-flex items-center gap-1.5"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+                {refreshing ? 'Syncing...' : 'Sync Firestore'}
+              </button>
+            </div>
+          </div>
         ) : filteredUsers.length === 0 ? (
           <div className="text-center py-12 text-xs text-slate-400">No athletes match the search criteria.</div>
         ) : (

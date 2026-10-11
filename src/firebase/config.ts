@@ -64,7 +64,8 @@ function initDb() {
   const customDbId =
     firebaseConfig.firestoreDatabaseId &&
     firebaseConfig.firestoreDatabaseId.trim() !== '' &&
-    firebaseConfig.firestoreDatabaseId !== '(default)'
+    firebaseConfig.firestoreDatabaseId !== '(default)' &&
+    !firebaseConfig.firestoreDatabaseId.startsWith('ai-studio-')
       ? firebaseConfig.firestoreDatabaseId
       : undefined;
 
@@ -72,7 +73,6 @@ function initDb() {
     return initializeFirestore(
       app,
       {
-        experimentalForceLongPolling: true,
         localCache: persistentLocalCache({
           tabManager: persistentMultipleTabManager(),
         }),
@@ -90,6 +90,20 @@ storage.maxUploadRetryTime = 60000;
 storage.maxOperationRetryTime = 60000;
 
 // Centralized Firestore Error Handler
+export function cleanForFirestore<T extends Record<string, any>>(obj: T): T {
+  const result: any = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== undefined) {
+      if (value !== null && typeof value === 'object' && !Array.isArray(value) && !(value instanceof Date)) {
+        result[key] = cleanForFirestore(value);
+      } else {
+        result[key] = value;
+      }
+    }
+  }
+  return result;
+}
+
 export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null): never {
   const currentAuth = auth.currentUser;
   const errInfo: FirestoreErrorInfo = {
