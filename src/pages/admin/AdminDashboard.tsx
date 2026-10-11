@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { computeAdminStats, AdminStats } from '../../services/adminService';
+import { computeAdminStats, AdminStats, subscribeToUsers, fetchAllSubmissionsAdmin } from '../../services/adminService';
 import { StatsCard } from '../../components/common/StatsCard';
 import {
   Users,
@@ -35,7 +35,46 @@ export const AdminDashboard: React.FC = () => {
   };
 
   useEffect(() => {
-    loadStats();
+    setLoading(true);
+    // Real-time listener: updates Total Registered, Active, Completed, Recent Athletes instantly!
+    const unsubscribe = subscribeToUsers(
+      (liveUsers) => {
+        const totalUsers = liveUsers.length;
+        const completedChallenges = liveUsers.filter((u) => (u.completedDays || 0) >= 30).length;
+        const activeChallenges = liveUsers.filter((u) => (u.completedDays || 0) > 0 && (u.completedDays || 0) < 30).length;
+        const totalCompletedDaysSum = liveUsers.reduce((acc, u) => acc + (u.completedDays || 0), 0);
+        const averageCompletionRate = totalUsers > 0 ? Math.round((totalCompletedDaysSum / (totalUsers * 30)) * 100) : 0;
+        const recentRegistrations = [...liveUsers]
+          .sort((a, b) => new Date(b.createdAt || '').getTime() - new Date(a.createdAt || '').getTime())
+          .slice(0, 5);
+
+        setStats((prev) => ({
+          totalUsers,
+          activeChallenges,
+          completedChallenges,
+          averageCompletionRate,
+          totalSubmissions: prev?.totalSubmissions || 0,
+          recentRegistrations,
+        }));
+        setLoading(false);
+
+        // Fetch submissions asynchronously without blocking users display
+        fetchAllSubmissionsAdmin(liveUsers)
+          .then((allSubs) => {
+            setStats((prev) => (prev ? { ...prev, totalSubmissions: allSubs.length } : null));
+          })
+          .catch((err) => {
+            console.warn('Submissions load notice:', err);
+          });
+      },
+      (err) => {
+        console.warn('Real-time dashboard listener notice:', err);
+        // Fallback to one-time loadStats
+        loadStats();
+      }
+    );
+
+    return () => unsubscribe();
   }, []);
 
   return (
@@ -90,35 +129,35 @@ export const AdminDashboard: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <StatsCard
           label="Total Registered"
-          value={stats?.totalUsers || 0}
+          value={loading ? '...' : (stats?.totalUsers ?? 0)}
           unit="users"
           icon={Users}
           colorScheme="purple"
         />
         <StatsCard
           label="Active Challenges"
-          value={stats?.activeChallenges || 0}
+          value={loading ? '...' : (stats?.activeChallenges ?? 0)}
           unit="in progress"
           icon={Flame}
           colorScheme="amber"
         />
         <StatsCard
           label="Completed (Day 30)"
-          value={stats?.completedChallenges || 0}
+          value={loading ? '...' : (stats?.completedChallenges ?? 0)}
           unit="graduates"
           icon={CheckCircle2}
           colorScheme="emerald"
         />
         <StatsCard
           label="Average Completion"
-          value={stats?.averageCompletionRate || 0}
+          value={loading ? '...' : (stats?.averageCompletionRate ?? 0)}
           unit="%"
           icon={TrendingUp}
           colorScheme="blue"
         />
         <StatsCard
           label="Daily Submissions"
-          value={stats?.totalSubmissions || 0}
+          value={loading ? '...' : (stats?.totalSubmissions ?? 0)}
           unit="logs"
           icon={FileText}
           colorScheme="rose"
